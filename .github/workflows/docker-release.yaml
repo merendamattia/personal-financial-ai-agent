@@ -1,0 +1,76 @@
+name: 'Push docker image to Docker Hub'
+on:
+  workflow_run:
+    workflows: ["Semantic Release"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_REPO }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - name: Checkout the repo at workflow run commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Determine tag to use
+        id: determine_tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          # 1) allow an explicit tag when manually dispatched
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          fi
+
+          # 2) fetch tags and use the latest tag by creation date
+          if [ -z "$TAG" ]; then
+            # ensure tags are fetched
+            git fetch --tags --quiet
+            TAG=$(git for-each-ref --sort=-version:refname --format '%(refname:short)' refs/tags | head -n1)
+          fi
+
+          # 3) fallback to HEAD_BRANCH if present
+          if [ -z "$TAG" ] && [ -n "$HEAD_BRANCH" ]; then
+            TAG="$HEAD_BRANCH"
+          fi
+
+          if [ -z "$TAG" ]; then
+            echo "No tag found; failing"
+            exit 1
+          fi
+
+          echo "Using tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:${{ steps.determine_tag.outputs.tag }}
+            ${{ env.DOCKERHUB_REPO }}:latest
