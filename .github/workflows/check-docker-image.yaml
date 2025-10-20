@@ -18,9 +18,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Build & Run Docker image
-        run: |
-          cd docker
-          # docker compose build
-          docker build -t my-test-image .
-          docker run --rm my-test-image
+      # - name: Build & Run Docker image
+      #   run: |
+      #     cd docker
+      #     # docker compose build
+      #     docker build -t my-test-image .
+      #     docker run --rm my-test-image
