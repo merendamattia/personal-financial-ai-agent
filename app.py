@@ -112,12 +112,12 @@ def main():
 
         with col1:
             if "ollama" in available_providers:
-                if st.button("🏠 Ollama (Local)", use_container_width=True):
+                if st.button("🦙 Ollama", use_container_width=True, key="ollama_btn"):
                     st.session_state.provider = "ollama"
                     st.rerun()
             else:
                 st.button(
-                    "🏠 Ollama (Not Running)",
+                    "Ollama (Not Running)",
                     disabled=True,
                     use_container_width=True,
                     help="Start Ollama with: ollama serve",
@@ -125,24 +125,26 @@ def main():
 
         with col2:
             if "google" in available_providers:
-                if st.button("🔴 Google Gemini", use_container_width=True):
+                if st.button(
+                    "🌐 Google Gemini", use_container_width=True, key="google_btn"
+                ):
                     st.session_state.provider = "google"
                     st.rerun()
             else:
                 st.button(
-                    "🔴 Google (Not Available)",
+                    "Google (Not Available)",
                     disabled=True,
                     use_container_width=True,
                 )
 
         with col3:
             if "openai" in available_providers:
-                if st.button("⚪ OpenAI GPT", use_container_width=True):
+                if st.button("✨ OpenAI", use_container_width=True, key="openai_btn"):
                     st.session_state.provider = "openai"
                     st.rerun()
             else:
                 st.button(
-                    "⚪ OpenAI (Not Available)",
+                    "OpenAI (Not Available)",
                     disabled=True,
                     use_container_width=True,
                 )
