@@ -8,27 +8,23 @@ A personal financial advisor AI agent: get intelligent financial guidance in you
 ## Requirements
 
 - Python 3.11+
-- Ollama installed and running
+- Ollama installed and running (optional)
 
 ## Quick Installation
 
-1. Install Ollama: download and install from [ollama.com](https://ollama.com/) for your operating system.
-
-2. Start Ollama and pull a model
-
-3. Create and activate a virtual environment:
+1. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-4. Install dependencies:
+2. Install dependencies:
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-5. Prepare environment variables:
+3. Prepare environment variables:
 
 ```bash
 cp .env.example .env
@@ -44,6 +40,34 @@ streamlit run app.py
 
 Open http://localhost:8501 in your browser and start chatting.
 
+On first launch, a modal dialog will appear asking you to select your preferred LLM provider. Choose from the available options based on what you have configured.
+
+## Supported LLM Providers
+
+The agent supports multiple LLM providers. Simply configure the necessary credentials and select your preferred provider from the UI:
+
+### Ollama (Local Models)
+
+- **No API key required** - fully offline
+- **Setup**: Download and install [Ollama](https://ollama.com/), then start it on your system
+- **Model**: Configure `OLLAMA_MODEL` in `.env` (default: `qwen3:0.6b`)
+- **API URL**: `OLLAMA_API_URL` in `.env` (default: `http://localhost:11434/v1`)
+
+### Google Generative AI (Gemini)
+
+- Get an API key from [AI Studio](https://aistudio.google.com/app/apikey)
+- Set `GOOGLE_API_KEY` in `.env`
+- Configure `GOOGLE_MODEL` in `.env` (default: `gemini-2.0-flash`)
+
+### OpenAI (GPT Models)
+
+- Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- Set `OPENAI_API_KEY` in `.env`
+- Configure `OPENAI_MODEL` in `.env` (default: `gpt-4o-mini`)
+
+### Provider Selection
+
+The app automatically detects which providers are available based on your `.env` configuration and displays only those options. Select your preferred provider when you start the app, or simply click the provider button in the chat interface to switch providers.
 
 ## Contributing
 

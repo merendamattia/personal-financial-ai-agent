@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Optional
 
 from datapizza.agents import Agent
-from datapizza.clients.openai_like import OpenAILikeClient
 from datapizza.memory import Memory
 from datapizza.type import ROLE, TextBlock
+
+from .clients import get_client, list_providers
 
 
 class ChatBotAgent:
@@ -27,6 +28,7 @@ class ChatBotAgent:
         self,
         name: Optional[str] = None,
         system_prompt: Optional[str] = None,
+        provider: Optional[str] = None,
         api_url: Optional[str] = None,
         model: Optional[str] = None,
     ):
@@ -36,15 +38,28 @@ class ChatBotAgent:
         Args:
             name: Agent name (default from env: AGENT_NAME)
             system_prompt: System prompt for the agent (default from prompts/system_prompt.md)
-            api_url: Ollama API URL (default from env: OLLAMA_API_URL)
-            model: Model name to use (default from env: OLLAMA_MODEL)
+            provider: LLM provider ('ollama', 'google', 'openai') (default: 'ollama')
+            api_url: API URL (for Ollama) (default from env: OLLAMA_API_URL)
+            model: Model name to use (default depends on provider)
         """
         # Load configuration from environment
-        self.name = name or os.getenv("AGENT_NAME", "PersonalFinancialAIAgent")
-        self.api_url = api_url or os.getenv(
-            "OLLAMA_API_URL", "http://localhost:11434/v1"
-        )
-        self.model = model or os.getenv("OLLAMA_MODEL", "mistral")
+        self.name = name or os.getenv("AGENT_NAME")
+        self.provider = provider or "ollama"
+
+        # Load model based on provider
+        if model:
+            self.model = model
+        else:
+            # Use provider-specific model environment variable
+            if self.provider == "ollama":
+                self.model = os.getenv("OLLAMA_MODEL")
+            elif self.provider == "google":
+                self.model = os.getenv("GOOGLE_MODEL")
+            elif self.provider == "openai":
+                self.model = os.getenv("OPENAI_MODEL")
+
+        # API URL only for Ollama
+        self.api_url = api_url or os.getenv("OLLAMA_API_URL")
 
         # Load system prompt from file
         if system_prompt:
@@ -84,18 +99,25 @@ class ChatBotAgent:
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _create_client(self) -> OpenAILikeClient:
+    def _create_client(self):
         """
-        Create and configure the OpenAI-like client for Ollama.
+        Create and configure the LLM client based on the provider.
 
         Returns:
-            Configured OpenAILikeClient instance
+            Configured client instance for the selected provider
         """
-        return OpenAILikeClient(
-            base_url=self.api_url,
-            model=self.model,
-            api_key="",  # Ollama doesn't require an actual API key
-        )
+        # Build config for the provider
+        config = {
+            "model": self.model,
+            "system_prompt": self.system_prompt,
+        }
+
+        # Add provider-specific config
+        if self.provider == "ollama":
+            config["base_url"] = self.api_url
+        # For google and openai, API keys come from environment variables
+
+        return get_client(self.provider, config)
 
     def _create_agent(self) -> Agent:
         """
@@ -108,7 +130,6 @@ class ChatBotAgent:
         return Agent(
             name=self.name,
             client=self._client,
-            system_prompt=self.system_prompt,
             # tools=[
             #     calculate_monthly_budget,
             #     calculate_compound_interest,
@@ -219,6 +240,8 @@ class ChatBotAgent:
         """
         return {
             "name": self.name,
+            "provider": self.provider,
             "model": self.model,
-            "api_url": self.api_url,
+            "api_url": self.api_url if self.provider == "ollama" else "N/A",
+            "available_providers": list_providers(),
         }
