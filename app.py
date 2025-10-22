@@ -139,6 +139,9 @@ def main():
     if "question_index" not in st.session_state:
         st.session_state.question_index = 0
         logger.debug("Initialized question_index session state to 0")
+    if "agent_initialized" not in st.session_state:
+        st.session_state.agent_initialized = False
+        logger.debug("Initialized agent_initialized session state to False")
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
@@ -162,6 +165,7 @@ def main():
                 if st.button("🦙 Ollama", use_container_width=True, key="ollama_btn"):
                     logger.info("Ollama provider selected")
                     st.session_state.provider = "ollama"
+                    st.session_state.agent_initialized = False
                     st.rerun()
             else:
                 st.button(
@@ -178,6 +182,7 @@ def main():
                 ):
                     logger.info("Google provider selected")
                     st.session_state.provider = "google"
+                    st.session_state.agent_initialized = False
                     st.rerun()
             else:
                 st.button(
@@ -191,6 +196,7 @@ def main():
                 if st.button("✨ OpenAI", use_container_width=True, key="openai_btn"):
                     logger.info("OpenAI provider selected")
                     st.session_state.provider = "openai"
+                    st.session_state.agent_initialized = False
                     st.rerun()
             else:
                 st.button(
@@ -204,19 +210,66 @@ def main():
             "💡 **Tip:** Ollama is free and runs locally. "
             "Install from [ollama.com](https://ollama.com/)"
         )
-        st.stop()
+        return
 
-    # Provider has been selected, initialize agent
-    logger.debug("Provider selected: %s", st.session_state.provider)
+    # Show loading screen while initializing agent
+    if not st.session_state.agent_initialized:
+        logger.debug("Agent not yet initialized, showing loading screen")
+
+        st.title("💰 Financial AI Agent")
+        st.markdown("Your personal financial advisor powered by AI")
+
+        st.divider()
+
+        # Loading animation
+        loading_col1, loading_col2, loading_col3 = st.columns([1, 2, 1])
+        with loading_col2:
+            st.markdown(
+                """
+                <div style="text-align: center; padding: 4rem 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem; animation: spin 2s linear infinite;">⏳</div>
+                    <h3>Initializing your financial advisor...</h3>
+                    <p style="color: gray;">Please wait while we load your AI assistant.</p>
+                </div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        try:
+            logger.debug(
+                "Initializing agent for provider: %s", st.session_state.provider
+            )
+            agent = initialize_agent(st.session_state.provider)
+            logger.info("Agent initialized successfully")
+            st.session_state.agent_initialized = True
+            st.rerun()
+        except Exception as e:
+            logger.error("Failed to initialize agent: %s", str(e), exc_info=True)
+            st.error(f"Failed to initialize agent: {e}")
+            st.session_state.provider = None
+            st.session_state.agent_initialized = False
+            st.rerun()
+
+    # Provider has been selected and agent is initialized
+    logger.debug(
+        "Provider selected and agent initialized: %s", st.session_state.provider
+    )
 
     try:
-        logger.debug("Initializing agent for selected provider")
+        logger.debug("Getting cached agent for provider: %s", st.session_state.provider)
         agent = initialize_agent(st.session_state.provider)
-        logger.info("Agent initialized successfully")
+        logger.info("Agent retrieved successfully")
     except Exception as e:
-        logger.error("Failed to initialize agent: %s", str(e), exc_info=True)
-        st.error(f"❌ Failed to initialize agent: {e}")
+        logger.error("Failed to retrieve agent: %s", str(e), exc_info=True)
+        st.error(f"Failed to retrieve agent: {e}")
         st.session_state.provider = None
+        st.session_state.agent_initialized = False
         st.rerun()
 
     # Header
