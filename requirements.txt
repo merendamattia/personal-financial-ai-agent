@@ -32,6 +32,7 @@ datapizza-ai-clients-openai-like==0.0.3
 datapizza-ai-core==0.0.1
 datapizza-ai-embedders-google==0.0.2
 datapizza-ai-embedders-openai==0.0.3
+datapizza-ai-parsers-docling==0.0.4
 datapizza-ai-tools-duckduckgo==0.0.2
 datapizza-ai-vectorstores-qdrant==0.0.2
 ddgs==9.6.1
