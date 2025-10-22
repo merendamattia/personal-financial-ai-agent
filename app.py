@@ -7,6 +7,7 @@ AI agent powered by datapizza-ai and multiple LLM providers.
 
 import logging
 import os
+import time
 
 import requests
 import streamlit as st
@@ -123,6 +124,23 @@ def initialize_agent(provider: str) -> ChatBotAgent:
             exc_info=True,
         )
         raise
+
+
+def stream_text(text: str, chunk_size: int = 20):
+    """
+    Stream text with a typing effect by displaying chunks progressively.
+
+    Args:
+        text: The text to stream
+        chunk_size: Number of characters per chunk (default: 20)
+    """
+    placeholder = st.empty()
+    displayed_text = ""
+
+    for i in range(0, len(text), chunk_size):
+        displayed_text += text[i : i + chunk_size]
+        placeholder.markdown(displayed_text)
+        time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
 def main():
@@ -428,8 +446,8 @@ def main():
                         )
                         logger.info("All questions completed, summary provided")
 
-                    # Display response
-                    st.markdown(response_text)
+                    # Display response with streaming effect
+                    stream_text(response_text)
                     st.session_state.messages.append(
                         {"role": "assistant", "content": response_text}
                     )
