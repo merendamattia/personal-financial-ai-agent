@@ -1,0 +1,24 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "text": "Ciao! 👋 Dimmi un po' di te: qual è il tuo reddito mensile lordo approssimativo?"
+    },
+    {
+      "id": 2,
+      "text": "Grazie per aver condiviso questo. Quali sono le tue spese mensili principali? (ad esempio: affitto, cibo, trasporti, intrattenimento)"
+    },
+    {
+      "id": 3,
+      "text": "Perfetto. Attualmente, quanto hai risparmiato? Hai un fondo di emergenza?"
+    },
+    {
+      "id": 4,
+      "text": "Bene! Quali sono i tuoi principali obiettivi finanziari per i prossimi anni? (ad esempio: casa, vacanza, pensione, istruzione)"
+    },
+    {
+      "id": 5,
+      "text": "Interessante. Attualmente hai investimenti? Se sì, dove? (azioni, obbligazioni, fondi, immobili, altro)"
+    }
+  ]
+}

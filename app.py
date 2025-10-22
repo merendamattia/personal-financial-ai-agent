@@ -136,6 +136,9 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
         logger.debug("Initialized messages session state to empty list")
+    if "question_index" not in st.session_state:
+        st.session_state.question_index = 0
+        logger.debug("Initialized question_index session state to 0")
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
@@ -237,13 +240,16 @@ def main():
             logger.info("Changing provider requested")
             st.session_state.provider = None
             st.session_state.messages = []
+            st.session_state.question_index = 0
             st.rerun()
 
         # Clear history button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
             logger.debug("Clearing conversation history")
             agent.clear_memory()
+            agent.reset_questions()
             st.session_state.messages = []
+            st.session_state.question_index = 0
             st.success("Conversation cleared!")
 
         # Model info
@@ -255,18 +261,36 @@ def main():
         st.write(f"**Agent:** {config['name']}")
         logger.debug("Config summary displayed: %s", config)
 
+        # Progress info
+        st.divider()
+        st.subheader("📋 Assessment Progress")
+        progress = agent.get_questions_progress()
+        st.write(
+            f"**Question {progress['current_index'] + 1} of {progress['total_questions']}**"
+        )
+        st.progress(progress["progress_percentage"] / 100)
+        logger.debug("Progress displayed: %s", progress)
+
     # Send welcome message on first load
     if len(st.session_state.messages) == 0:
         logger.debug("No messages in session state, sending welcome message")
 
         try:
-            welcome_message = agent.chat(
-                "Give a brief and friendly greeting as a financial advisor assistant. Write max 2 sentences in plain text (do not use JSON format or anything else)."
-            )
+            # Get the first question (without advancing yet - we're at index 0)
+            first_question = agent.get_current_question()
+            logger.debug("First question: %s", first_question[:200])
+
+            # Format the welcome prompt template
+            welcome_prompt = agent.welcome_prompt.format(first_question=first_question)
+
+            welcome_message = agent.chat(welcome_prompt)
             st.session_state.messages.append(
                 {"role": "assistant", "content": welcome_message}
             )
-            logger.debug("Welcome message added to session")
+
+            # Now advance to the next question index for the first user response
+            agent.advance_to_next_question()
+            logger.debug("Welcome message sent, advanced to question index 1")
         except Exception as e:
             logger.error(
                 "Failed to generate welcome message: %s", str(e), exc_info=True
@@ -294,16 +318,69 @@ def main():
             try:
                 with st.spinner("Thinking..."):
                     logger.debug("Getting response from agent")
-                    # Get response from agent
-                    response_text = agent.chat(prompt)
+                    logger.debug(
+                        "Current question index before advance: %d",
+                        agent.current_question_index,
+                    )
 
-                    logger.debug("Response generated, length: %d", len(response_text))
+                    # Check if there are more questions AFTER this one
+                    has_more_questions = agent.advance_to_next_question()
+                    logger.debug(
+                        "After advance - has_more_questions: %s, current_index: %d",
+                        has_more_questions,
+                        agent.current_question_index,
+                    )
+
+                    if has_more_questions:
+                        # There are more questions to ask
+                        next_question = agent.get_current_question()
+                        logger.debug("Next question available: %s", next_question[:50])
+
+                        # Format the acknowledge and ask prompt template
+                        response_prompt = agent.acknowledge_and_ask_prompt.format(
+                            user_answer=prompt, next_question=next_question
+                        )
+
+                        # Get response from agent
+                        response_text = agent.chat(response_prompt)
+                        logger.debug(
+                            "Response generated, length: %d", len(response_text)
+                        )
+                    else:
+                        # All questions have been answered
+                        logger.info(
+                            "All questions have been answered, generating summary"
+                        )
+
+                        # Get the full conversation history from session state
+                        conversation_lines = []
+                        for msg in st.session_state.messages:
+                            role = "Utente" if msg["role"] == "user" else "Assistente"
+                            conversation_lines.append(f"{role}: {msg['content']}")
+
+                        conversation_history = "\n\n".join(conversation_lines)
+                        logger.debug(
+                            "Conversation history prepared, length: %d",
+                            len(conversation_history),
+                        )
+
+                        # Format the summary prompt with the conversation history
+                        summary_prompt = agent.summary_prompt.format(
+                            user_answer=prompt,
+                            conversation_history=conversation_history,
+                        )
+                        response_text = agent.chat(summary_prompt)
+                        logger.debug(
+                            "Final summary generated, length: %d", len(response_text)
+                        )
+                        logger.info("All questions completed, summary provided")
 
                     # Display response
                     st.markdown(response_text)
                     st.session_state.messages.append(
                         {"role": "assistant", "content": response_text}
                     )
+
                     logger.info("Chat interaction completed successfully")
             except Exception as e:
                 logger.error("Error processing user input: %s", str(e), exc_info=True)
