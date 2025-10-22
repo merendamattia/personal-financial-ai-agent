@@ -9,3 +9,4 @@ datapizza-ai-clients-openai==0.0.3
 datapizza-ai-clients-openai-like==0.0.3
 datapizza-ai-core==0.0.1
 watchdog==6.0.0
+dotenv==0.9.9
