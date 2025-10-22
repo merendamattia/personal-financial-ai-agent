@@ -152,6 +152,7 @@ def _register_builtin_providers() -> None:
             api_key=api_key,
             model=model,
             system_prompt=system_prompt,
+            temperature=0.5,
         )
 
     def openai_factory(cfg: Dict[str, Any]) -> Any:
@@ -197,6 +198,7 @@ def _register_builtin_providers() -> None:
             api_key=api_key,
             model=model,
             system_prompt=system_prompt,
+            temperature=0.5,
         )
 
     def ollama_factory(cfg: Dict[str, Any]) -> Any:
@@ -239,6 +241,7 @@ def _register_builtin_providers() -> None:
             model=model,
             base_url=base_url,
             system_prompt=system_prompt,
+            temperature=0.5,
         )
 
     logger.debug("Registering Google factory")

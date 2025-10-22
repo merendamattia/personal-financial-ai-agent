@@ -261,7 +261,7 @@ def main():
 
         try:
             welcome_message = agent.chat(
-                "Give a brief and friendly greeting as a financial advisor assistant. Write max 2 sentences."
+                "Give a brief and friendly greeting as a financial advisor assistant. Write max 2 sentences in plain text (do not use JSON format or anything else)."
             )
             st.session_state.messages.append(
                 {"role": "assistant", "content": welcome_message}

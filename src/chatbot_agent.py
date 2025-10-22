@@ -181,6 +181,7 @@ class ChatBotAgent:
             client=self._client,
             # tools=[],
             memory=self._memory,
+            planning_interval=5,
         )
 
         logger.info("Agent created successfully with name: %s", self.name)
