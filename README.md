@@ -14,7 +14,7 @@ A personal financial advisor AI agent: get intelligent financial guidance in you
 
 1. Create and activate a virtual environment:
 ```bash
-conda create --name personal-financial-ai-agent-env python=3.11
+conda create --name personal-financial-ai-agent-env python=3.11.13
 conda activate personal-financial-ai-agent-env
 ```
 
