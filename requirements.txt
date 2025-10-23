@@ -169,6 +169,7 @@ pyobjc-framework-CoreML==11.1
 pyobjc-framework-Quartz==11.1
 pyobjc-framework-Vision==11.1
 pyparsing==3.2.3
+pypdf==6.1.3
 pypdfium2==4.30.0
 pytest==8.4.2
 python-bidi==0.6.6
@@ -193,6 +194,7 @@ scikit-learn==1.6.1
 scipy==1.13.1
 seaborn==0.13.2
 semchunk==2.2.2
+sentence_transformers==5.1.2
 shapely==2.1.2
 shellingham==1.5.4
 six==1.17.0
