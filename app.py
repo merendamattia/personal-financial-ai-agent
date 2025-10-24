@@ -160,6 +160,9 @@ def main():
     if "agent_initialized" not in st.session_state:
         st.session_state.agent_initialized = False
         logger.debug("Initialized agent_initialized session state to False")
+    if "conversation_completed" not in st.session_state:
+        st.session_state.conversation_completed = False
+        logger.debug("Initialized conversation_completed session state to False")
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
@@ -312,6 +315,7 @@ def main():
             st.session_state.provider = None
             st.session_state.messages = []
             st.session_state.question_index = 0
+            st.session_state.conversation_completed = False
             st.rerun()
 
         # Clear history button
@@ -321,6 +325,7 @@ def main():
             agent.reset_questions()
             st.session_state.messages = []
             st.session_state.question_index = 0
+            st.session_state.conversation_completed = False
             st.success("Conversation cleared!")
 
         # Model info
@@ -373,93 +378,120 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # User input
-    if prompt := st.chat_input("Ask me about your finances..."):
-        logger.debug("User input received: %s", prompt[:100])
+    # Show message if conversation is completed
+    if st.session_state.conversation_completed:
+        logger.debug("Conversation is completed, showing completion message")
+        st.info(
+            "✅ **Assessment completed!** All your financial questions have been answered and the summary has been provided. "
+            "Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over."
+        )
+    else:
+        # User input - only show if conversation is not completed
+        if prompt := st.chat_input("Ask me about your finances..."):
+            logger.debug("User input received: %s", prompt[:100])
 
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-        # Add to session state
-        st.session_state.messages.append({"role": "user", "content": prompt})
+            # Add to session state
+            st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Generate response
-        with st.chat_message("assistant"):
-            try:
-                with st.spinner("Thinking..."):
-                    logger.debug("Getting response from agent")
-                    logger.debug(
-                        "Current question index before advance: %d",
-                        agent.current_question_index,
+            # Generate response
+            with st.chat_message("assistant"):
+                try:
+                    with st.spinner("Thinking..."):
+                        logger.debug("Getting response from agent")
+                        logger.debug(
+                            "Current question index before advance: %d",
+                            agent.current_question_index,
+                        )
+
+                        # Check if there are more questions AFTER this one
+                        has_more_questions = agent.advance_to_next_question()
+                        logger.debug(
+                            "After advance - has_more_questions: %s, current_index: %d",
+                            has_more_questions,
+                            agent.current_question_index,
+                        )
+
+                        if has_more_questions:
+                            # There are more questions to ask
+                            next_question = agent.get_current_question()
+                            logger.debug(
+                                "Next question available: %s", next_question[:50]
+                            )
+
+                            # Format the acknowledge and ask prompt template
+                            response_prompt = agent.acknowledge_and_ask_prompt.format(
+                                user_answer=prompt, next_question=next_question
+                            )
+
+                            # Get response from agent
+                            response_text = agent.chat(response_prompt)
+                            logger.debug(
+                                "Response generated, length: %d", len(response_text)
+                            )
+
+                            # Display response with streaming effect
+                            stream_text(response_text)
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": response_text}
+                            )
+
+                            logger.info("Chat interaction completed successfully")
+                        else:
+                            # All questions have been answered
+                            logger.info(
+                                "All questions have been answered, generating summary"
+                            )
+
+                            # Get the full conversation history from session state
+                            conversation_lines = []
+                            for msg in st.session_state.messages:
+                                role = (
+                                    "Utente" if msg["role"] == "user" else "Assistente"
+                                )
+                                conversation_lines.append(f"{role}: {msg['content']}")
+
+                            conversation_history = "\n\n".join(conversation_lines)
+                            logger.debug(
+                                "Conversation history prepared, length: %d",
+                                len(conversation_history),
+                            )
+
+                            # Format the summary prompt with the conversation history
+                            summary_prompt = agent.summary_prompt.format(
+                                user_answer=prompt,
+                                conversation_history=conversation_history,
+                            )
+                            response_text = agent.chat(summary_prompt)
+                            logger.debug(
+                                "Final summary generated, length: %d",
+                                len(response_text),
+                            )
+                            logger.info("All questions completed, summary provided")
+
+                            # Mark conversation as completed for next render
+                            st.session_state.conversation_completed = True
+                            logger.info("Conversation marked as completed")
+
+                            # Display response with streaming effect
+                            stream_text(response_text)
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": response_text}
+                            )
+
+                            logger.info("Chat interaction completed successfully")
+                except Exception as e:
+                    logger.error(
+                        "Error processing user input: %s", str(e), exc_info=True
                     )
-
-                    # Check if there are more questions AFTER this one
-                    has_more_questions = agent.advance_to_next_question()
-                    logger.debug(
-                        "After advance - has_more_questions: %s, current_index: %d",
-                        has_more_questions,
-                        agent.current_question_index,
-                    )
-
-                    if has_more_questions:
-                        # There are more questions to ask
-                        next_question = agent.get_current_question()
-                        logger.debug("Next question available: %s", next_question[:50])
-
-                        # Format the acknowledge and ask prompt template
-                        response_prompt = agent.acknowledge_and_ask_prompt.format(
-                            user_answer=prompt, next_question=next_question
-                        )
-
-                        # Get response from agent
-                        response_text = agent.chat(response_prompt)
-                        logger.debug(
-                            "Response generated, length: %d", len(response_text)
-                        )
-                    else:
-                        # All questions have been answered
-                        logger.info(
-                            "All questions have been answered, generating summary"
-                        )
-
-                        # Get the full conversation history from session state
-                        conversation_lines = []
-                        for msg in st.session_state.messages:
-                            role = "Utente" if msg["role"] == "user" else "Assistente"
-                            conversation_lines.append(f"{role}: {msg['content']}")
-
-                        conversation_history = "\n\n".join(conversation_lines)
-                        logger.debug(
-                            "Conversation history prepared, length: %d",
-                            len(conversation_history),
-                        )
-
-                        # Format the summary prompt with the conversation history
-                        summary_prompt = agent.summary_prompt.format(
-                            user_answer=prompt,
-                            conversation_history=conversation_history,
-                        )
-                        response_text = agent.chat(summary_prompt)
-                        logger.debug(
-                            "Final summary generated, length: %d", len(response_text)
-                        )
-                        logger.info("All questions completed, summary provided")
-
-                    # Display response with streaming effect
-                    stream_text(response_text)
+                    error_msg = f"❌ Error: {str(e)}"
+                    st.error(error_msg)
                     st.session_state.messages.append(
-                        {"role": "assistant", "content": response_text}
+                        {"role": "assistant", "content": error_msg}
                     )
-
-                    logger.info("Chat interaction completed successfully")
-            except Exception as e:
-                logger.error("Error processing user input: %s", str(e), exc_info=True)
-                error_msg = f"❌ Error: {str(e)}"
-                st.error(error_msg)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_msg}
-                )
 
 
 if __name__ == "__main__":
