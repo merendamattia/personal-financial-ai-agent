@@ -415,10 +415,18 @@ class ChatBotAgent:
         logger.debug("Checking agent health")
 
         try:
-            # Test the client connection
-            self._client.list_models()
-            logger.info("Agent health check passed")
-            return True
+            # Test the agent by running a simple task
+            test_response = self._agent.run(
+                task_input="Health check: respond briefly with 'OK'"
+            )
+
+            if test_response and hasattr(test_response, "text") and test_response.text:
+                logger.info("Agent health check passed")
+                return True
+            else:
+                logger.warning("Agent health check failed: Invalid response")
+                return False
+
         except Exception as e:
             logger.warning("Agent health check failed: %s", str(e))
             return False
