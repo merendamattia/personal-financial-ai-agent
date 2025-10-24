@@ -2,23 +2,59 @@
   "questions": [
     {
       "id": 1,
-      "text": "Ciao! 👋 Dimmi un po' di te: qual è il tuo reddito mensile lordo approssimativo?"
+      "text": "Ciao! 👋 Iniziamo con le informazioni personali. In quale fascia di età ti trovi e qual è il tuo status occupazionale? (ad esempio: 30 anni, impiegato)"
     },
     {
       "id": 2,
-      "text": "Grazie per aver condiviso questo. Quali sono le tue spese mensili principali? (ad esempio: affitto, cibo, trasporti, intrattenimento)"
+      "text": "Qual è la tua occupazione o il settore in cui lavori?"
     },
     {
       "id": 3,
-      "text": "Perfetto. Attualmente, quanto hai risparmiato? Hai un fondo di emergenza?"
+      "text": "Qual è il tuo reddito mensile lordo approssimativo e come valuti la stabilità del tuo reddito? (ad esempio: 3000€, stabile)"
     },
     {
       "id": 4,
-      "text": "Bene! Quali sono i tuoi principali obiettivi finanziari per i prossimi anni? (ad esempio: casa, vacanza, pensione, istruzione)"
+      "text": "Hai fonti di reddito aggiuntive oltre al lavoro principale? (ad esempio: investimenti, freelance, affitti)"
     },
     {
       "id": 5,
-      "text": "Interessante. Attualmente hai investimenti? Se sì, dove? (azioni, obbligazioni, fondi, immobili, altro)"
+      "text": "Quali sono le tue spese mensili principali e stima la fascia totale? (ad esempio: affitto 1000€, totale 2500€)"
+    },
+    {
+      "id": 6,
+      "text": "Attualmente hai debiti? Se sì, quale importo approssimativo e che tipo? (mutuo, prestiti, carte di credito)"
+    },
+    {
+      "id": 7,
+      "text": "Quanto hai in risparmi e per quanti mesi coprirebbero le tue spese? (ad esempio: 20000€, 8 mesi)"
+    },
+    {
+      "id": 8,
+      "text": "Hai investimenti? Se sì, dove e quale è la tua esperienza con gli investimenti? (azioni, ETF, immobili; principiante/intermedia/avanzata)"
+    },
+    {
+      "id": 9,
+      "text": "Quali sono i tuoi principali obiettivi finanziari? (ad esempio: casa, pensione, accumulare ricchezza)"
+    },
+    {
+      "id": 10,
+      "text": "Hai obiettivi finanziari a breve termine (1-2 anni) e a lungo termine (5+ anni)?"
+    },
+    {
+      "id": 11,
+      "text": "Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
+    },
+    {
+      "id": 12,
+      "text": "Come valuteresti il tuo livello di conoscenza finanziaria? (principiante, intermedio, avanzato)"
+    },
+    {
+      "id": 13,
+      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+    },
+    {
+      "id": 14,
+      "text": "C'è qualcos'altro di importante sulla tua situazione finanziaria che vorresti condividere?"
     }
   ]
 }
