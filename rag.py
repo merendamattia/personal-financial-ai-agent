@@ -45,6 +45,9 @@ CACHE_DIR = DATA_DIR / ".cache"
 CACHE_DIR.mkdir(exist_ok=True)
 EMB_CACHE = CACHE_DIR / "embeddings.pkl"
 
+DEFAULT_CHUNK_SIZE = 800
+DEFAULT_CHUNK_OVERLAP = 120
+
 # Embedding model
 EMB_MODEL_NAME = "all-roberta-large-v1"
 _model = None
@@ -83,7 +86,9 @@ def read_pdf_text(pdf_path: Path) -> str:
     return "\n".join(texts)
 
 
-def chunk_text(text: str, chunk_size=800, overlap=120) -> List[str]:
+def chunk_text(
+    text: str, chunk_size=DEFAULT_CHUNK_SIZE, overlap=DEFAULT_CHUNK_OVERLAP
+) -> List[str]:
     """
     Split text into overlapping chunks to preserve context.
 
@@ -136,11 +141,10 @@ def ingest_pdfs(pdf_dir: Path) -> List[Dict]:
                     {"id": f"{pdf.name}::chunk_{i}", "source": str(pdf), "text": ch}
                 )
         except Exception as e:
-            print(f"Errore nel parsing {pdf}: {e}")
+            logging.error(f"Errore nel parsing {pdf}: {e}")
     return docs
 
 
-# Indexing for retrieval
 def build_or_load_index() -> Tuple[List[Dict], np.ndarray]:
     """
     Build or load a cached index of documents and their embeddings.
@@ -175,7 +179,6 @@ def build_or_load_index() -> Tuple[List[Dict], np.ndarray]:
     return docs, embs
 
 
-# Retrieval
 def retrieve(query: str, docs: List[Dict], embs: np.ndarray, k: int = 5) -> List[Dict]:
     """
     Retrieve the k most similar documents for a given query using semantic similarity.
@@ -213,7 +216,7 @@ def call_llm(prompt: str) -> str:
         str: The generated response text from the model.
 
     Note:
-        Uses the Gemini 2.5 Pro model. Requires GOOGLE_API_KEY environment variable.
+        Uses the Gemini model specified by the GOOGLE_MODEL variable. Requires GOOGLE_API_KEY environment variable.
     """
     resp = client.models.generate_content(model=GOOGLE_MODEL, contents=prompt)
     return getattr(resp, "text", str(resp))
