@@ -166,6 +166,12 @@ def main():
     if "financial_profile" not in st.session_state:
         st.session_state.financial_profile = None
         logger.debug("Initialized financial_profile session state to None")
+    if "health_check_done" not in st.session_state:
+        st.session_state.health_check_done = False
+        logger.debug("Initialized health_check_done session state to False")
+    if "agent_is_healthy" not in st.session_state:
+        st.session_state.agent_is_healthy = False
+        logger.debug("Initialized agent_is_healthy session state to False")
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
@@ -304,8 +310,16 @@ def main():
     with st.sidebar:
         st.header("⚙️ Settings")
 
-        # Provider info
-        if agent.is_healthy():
+        # Provider info - health check only once
+        if not st.session_state.health_check_done:
+            logger.debug("Performing health check for the first time")
+            st.session_state.agent_is_healthy = agent.is_healthy()
+            st.session_state.health_check_done = True
+            logger.debug(
+                "Health check completed: %s", st.session_state.agent_is_healthy
+            )
+
+        if st.session_state.agent_is_healthy:
             logger.debug("Agent health check passed")
             st.success("✅ Agent initialized!")
         else:
@@ -320,6 +334,8 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.health_check_done = False
+            st.session_state.agent_is_healthy = False
             st.rerun()
 
         # Clear history button
@@ -331,6 +347,8 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.health_check_done = False
+            st.session_state.agent_is_healthy = False
             st.success("Conversation cleared!")
 
         # Model info
