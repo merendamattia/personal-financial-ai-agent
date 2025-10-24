@@ -561,3 +561,58 @@ class ChatBotAgent:
         formatted = "\n\n".join(history)
         logger.info("Conversation history formatted, length: %d", len(formatted))
         return formatted
+
+    def extract_financial_profile(self, conversation_summary: str):
+        """
+        Extract structured financial profile from conversation summary.
+
+        Uses datapizza's structured_response to extract financial information
+        from the conversation summary into a structured FinancialProfile object.
+
+        Args:
+            conversation_summary: The conversation summary text to process
+
+        Returns:
+            FinancialProfile object with extracted financial information
+
+        Raises:
+            Exception: If the extraction fails
+        """
+        logger.debug("Extracting financial profile from summary")
+
+        try:
+            from .financial_profile import FinancialProfile
+
+            # Create the extraction prompt
+            extraction_prompt = f"""Extract the financial profile information from the following conversation summary.
+If any information is not mentioned or unclear, use reasonable default values based on context clues.
+
+Conversation Summary:
+{conversation_summary}
+
+Please extract all available financial information and structure it according to the provided model."""
+
+            logger.debug("Calling structured_response with FinancialProfile model")
+
+            # Use datapizza's structured_response to extract structured data
+            response = self._client.structured_response(
+                input=extraction_prompt,
+                output_cls=FinancialProfile,
+            )
+
+            logger.debug("Structured response received")
+
+            # Extract the financial profile from the response
+            if hasattr(response, "structured_data") and response.structured_data:
+                profile = response.structured_data[0]
+                logger.info("Financial profile extracted successfully")
+                return profile
+            else:
+                logger.error("No structured data in response")
+                raise ValueError("No structured data returned from extraction")
+
+        except Exception as e:
+            logger.error(
+                "Failed to extract financial profile: %s", str(e), exc_info=True
+            )
+            raise RuntimeError(f"Failed to extract financial profile: {e}") from e

@@ -163,6 +163,9 @@ def main():
     if "conversation_completed" not in st.session_state:
         st.session_state.conversation_completed = False
         logger.debug("Initialized conversation_completed session state to False")
+    if "financial_profile" not in st.session_state:
+        st.session_state.financial_profile = None
+        logger.debug("Initialized financial_profile session state to None")
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
@@ -316,6 +319,7 @@ def main():
             st.session_state.messages = []
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
+            st.session_state.financial_profile = None
             st.rerun()
 
         # Clear history button
@@ -326,6 +330,7 @@ def main():
             st.session_state.messages = []
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
+            st.session_state.financial_profile = None
             st.success("Conversation cleared!")
 
         # Model info
@@ -385,6 +390,87 @@ def main():
             "✅ **Assessment completed!** All your financial questions have been answered and the summary has been provided. "
             "Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over."
         )
+
+        # Display financial profile if available
+        if st.session_state.financial_profile:
+            logger.debug("Displaying extracted financial profile")
+            st.divider()
+            st.subheader("📊 Financial Profile Summary")
+
+            # Convert profile to dictionary for display
+            profile_dict = st.session_state.financial_profile.dict()
+
+            # Organize profile into sections
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Personal & Employment**")
+                st.write(f"Age Range: {profile_dict.get('age_range', 'N/A')}")
+                st.write(f"Employment: {profile_dict.get('employment_status', 'N/A')}")
+                st.write(f"Occupation: {profile_dict.get('occupation', 'N/A')}")
+
+                st.markdown("**Income**")
+                st.write(
+                    f"Annual Income: {profile_dict.get('annual_income_range', 'N/A')}"
+                )
+                st.write(f"Stability: {profile_dict.get('income_stability', 'N/A')}")
+                st.write(
+                    f"Additional Sources: {profile_dict.get('additional_income_sources', 'N/A')}"
+                )
+
+                st.markdown("**Risk & Knowledge**")
+                st.write(f"Risk Tolerance: {profile_dict.get('risk_tolerance', 'N/A')}")
+                st.write(
+                    f"Investment Experience: {profile_dict.get('investment_experience', 'N/A')}"
+                )
+                st.write(
+                    f"Financial Knowledge: {profile_dict.get('financial_knowledge_level', 'N/A')}"
+                )
+
+            with col2:
+                st.markdown("**Expenses & Debts**")
+                st.write(
+                    f"Monthly Expenses: {profile_dict.get('monthly_expenses_range', 'N/A')}"
+                )
+                st.write(f"Major Expenses: {profile_dict.get('major_expenses', 'N/A')}")
+                st.write(f"Total Debt: {profile_dict.get('total_debt', 'N/A')}")
+                st.write(f"Debt Types: {profile_dict.get('debt_types', 'N/A')}")
+
+                st.markdown("**Assets & Savings**")
+                st.write(f"Savings: {profile_dict.get('savings_amount', 'N/A')}")
+                st.write(
+                    f"Emergency Fund: {profile_dict.get('emergency_fund_months', 'N/A')} months"
+                )
+                st.write(f"Investments: {profile_dict.get('investments', 'N/A')}")
+
+                st.markdown("**Family & Insurance**")
+                st.write(f"Dependents: {profile_dict.get('family_dependents', 'N/A')}")
+                st.write(f"Insurance: {profile_dict.get('insurance_coverage', 'N/A')}")
+
+            # Display goals and notes
+            st.markdown("**Financial Goals**")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"Primary Goals: {profile_dict.get('primary_goals', 'N/A')}")
+                st.write(f"Short-term: {profile_dict.get('short_term_goals', 'N/A')}")
+            with col2:
+                st.write(f"Long-term: {profile_dict.get('long_term_goals', 'N/A')}")
+
+            if profile_dict.get("summary_notes"):
+                st.markdown("**Additional Notes**")
+                st.write(profile_dict["summary_notes"])
+
+            # Display JSON download option
+            st.divider()
+            st.download_button(
+                label="📥 Download Financial Profile (JSON)",
+                data=st.session_state.financial_profile.model_dump_json(indent=2),
+                file_name="financial_profile.json",
+                mime="application/json",
+                key="download_profile",
+            )
+        else:
+            logger.debug("No financial profile available to display")
     else:
         # User input - only show if conversation is not completed
         if prompt := st.chat_input("Ask me about your finances..."):
@@ -471,6 +557,24 @@ def main():
                                 len(response_text),
                             )
                             logger.info("All questions completed, summary provided")
+
+                            # Extract structured financial profile
+                            logger.debug("Extracting structured financial profile")
+                            try:
+                                financial_profile = agent.extract_financial_profile(
+                                    response_text
+                                )
+                                logger.info("Financial profile extracted successfully")
+
+                                # Store profile in session state for display
+                                st.session_state.financial_profile = financial_profile
+                                logger.debug("Profile stored in session state")
+                            except Exception as profile_error:
+                                logger.warning(
+                                    "Failed to extract financial profile: %s",
+                                    str(profile_error),
+                                )
+                                st.session_state.financial_profile = None
 
                             # Mark conversation as completed for next render
                             st.session_state.conversation_completed = True
