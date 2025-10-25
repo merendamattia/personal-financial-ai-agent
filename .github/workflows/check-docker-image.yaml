@@ -21,4 +21,4 @@ jobs:
       - name: Build & Run Docker image
         run: |
           cp .env.example .env
-          docker build -t financial-ai-agent:ci .
+          docker build --no-cache -t financial-ai-agent:ci .
