@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  main:
+  semantic-release:
     runs-on: ubuntu-latest
     environment:
       name: Semantic Release

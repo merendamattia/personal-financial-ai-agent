@@ -8,19 +8,16 @@ on:
   push:
     branches:
       - main
-      - develop
 
 jobs:
-  docker-test:
+  docker-build-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # - name: Build & Run Docker image
-      #   run: |
-      #     cd docker
-      #     # docker compose build
-      #     docker build -t my-test-image .
-      #     docker run --rm my-test-image
+      - name: Build & Run Docker image
+        run: |
+          cp .env.example .env
+          docker build --no-cache -t financial-ai-agent:ci .

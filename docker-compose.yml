@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  financial-ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financial-ai-agent
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./dataset:/app/dataset
+      - ./.env:/app/.env
+    networks:
+      - financial-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  financial-network:
+    driver: bridge
