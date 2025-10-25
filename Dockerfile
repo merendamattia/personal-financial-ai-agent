@@ -19,8 +19,6 @@ COPY app.py .
 COPY src/ src/
 COPY prompts/ prompts/
 COPY dataset/ dataset/
-COPY rag.py .
-COPY retrival.py .
 COPY .env.example .env
 
 # Create non-root user for security
