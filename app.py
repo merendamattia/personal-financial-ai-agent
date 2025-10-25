@@ -13,8 +13,10 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
+from src.charts import display_financial_charts
 from src.chatbot_agent import ChatBotAgent
 from src.clients import list_providers
+from src.financial_profile import FinancialProfile
 
 # Configure logging
 logging.basicConfig(
@@ -97,6 +99,52 @@ def get_available_providers() -> list:
 
     logger.info("Available providers: %s", available)
     return available
+
+
+def get_test_financial_profile() -> FinancialProfile:
+    """
+    Create a test/demo financial profile for testing charts and displays.
+
+    Returns:
+        A sample FinancialProfile with realistic Italian financial data
+    """
+    logger.debug("Creating test financial profile")
+
+    profile = FinancialProfile(
+        # Personal Information
+        age_range="35-44",
+        employment_status="employed",
+        occupation="Software Engineer",
+        # Income Information
+        annual_income_range="50000-70000€",
+        income_stability="stable",
+        additional_income_sources="Freelance projects, ~5000€/year",
+        # Expenses and Debts
+        monthly_expenses_range="2500-3000€",
+        major_expenses="Mortgage (1200€), Car payment (300€), Utilities (200€)",
+        total_debt="30000-50000€",
+        debt_types="Mortgage (primary), Car loan (secondary)",
+        # Savings and Investments
+        savings_amount="45000-55000€",
+        emergency_fund_months="6",
+        investments="ETF (60%), Azioni italiane (30%), Criptovalute (10%)",
+        investment_experience="intermediate",
+        # Goals
+        primary_goals="Accumulare ricchezza per la pensione, Estinguere il mutuo",
+        short_term_goals="Costruire un fondo di emergenza più solido, Aumentare investimenti mensili",
+        long_term_goals="Raggiungere l'indipendenza finanziaria entro i 55 anni",
+        # Risk Profile
+        risk_tolerance="moderate",
+        risk_concerns="Market volatility, Economic recession, Loss of income",
+        # Knowledge and Other
+        financial_knowledge_level="intermediate",
+        family_dependents="2 children",
+        insurance_coverage="Life insurance (50000€), Home insurance, Car insurance",
+        summary_notes="Solid financial foundation with room for growth. Good income stability and emergency fund coverage.",
+    )
+
+    logger.debug("Test financial profile created successfully")
+    return profile
 
 
 @st.cache_resource
@@ -351,6 +399,14 @@ def main():
             st.session_state.agent_is_healthy = False
             st.success("Conversation cleared!")
 
+        # Test with demo profile button
+        if st.button("🧪 Load Test Profile", use_container_width=True):
+            logger.info("Loading test financial profile")
+            st.session_state.financial_profile = get_test_financial_profile()
+            st.session_state.conversation_completed = True
+            st.success("✅ Test profile loaded! Scroll down to see charts.")
+            st.rerun()
+
         # Model info
         st.divider()
         st.subheader("📊 Model Information")
@@ -477,6 +533,16 @@ def main():
             if profile_dict.get("summary_notes"):
                 st.markdown("**Additional Notes**")
                 st.write(profile_dict["summary_notes"])
+
+            # Display financial charts
+            st.divider()
+            logger.debug("Preparing to display financial charts")
+            try:
+                display_financial_charts(st.session_state.financial_profile)
+                logger.info("Financial charts displayed successfully")
+            except Exception as charts_error:
+                logger.warning("Failed to display charts: %s", str(charts_error))
+                st.warning("Could not generate charts at this time")
 
             # Display JSON download option
             st.divider()
