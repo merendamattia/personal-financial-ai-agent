@@ -42,6 +42,23 @@ Open http://localhost:8501 in your browser and start chatting.
 
 On first launch, a modal dialog will appear asking you to select your preferred LLM provider. Choose from the available options based on what you have configured.
 
+### Docker
+You can use Docker to avoid local installations.
+
+With Docker Compose:
+```bash
+docker compose up
+docker compose down # shutdown
+```
+
+Or with Docker run:
+```bash
+docker build -t financial-ai-agent:local .
+docker run -p 8501:8501 --env-file .env financial-ai-agent:local
+```
+
+Access at http://localhost:8501.
+
 ## Supported LLM Providers
 
 The agent supports multiple LLM providers. Simply configure the necessary credentials and select your preferred provider from the UI:
