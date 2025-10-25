@@ -1,0 +1,72 @@
+*.pdf
+__MACOSX
+.DS_Store
+.vscode/
+.env
+.env.local
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+
+# Streamlit
+.streamlit/
+*.streamlit.config.toml
+
+# Logs
+*.log
+logs/
+
+# Data
+*.csv
+*.xlsx
+*.xls
+dataset/raw/
+data/
+*.pkl
+*.pickle
+
+# Cache
+*.cache
+.cache/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
