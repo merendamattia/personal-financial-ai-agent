@@ -53,7 +53,7 @@ docker compose down # shutdown
 
 Or with Docker run:
 ```bash
-docker build -t financial-ai-agent:local .
+docker build --no-cache -t financial-ai-agent:local .
 docker run -p 8501:8501 --env-file .env financial-ai-agent:local
 ```
 
@@ -88,9 +88,4 @@ The app automatically detects which providers are available based on your `.env`
 
 ## Contributing
 
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Please install the Git commit hooks before making commits:
-
-```bash
-pre-commit install
-pre-commit install --hook-type commit-msg
-```
+Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines, including how to set up pre-commit hooks and follow our commit conventions.
