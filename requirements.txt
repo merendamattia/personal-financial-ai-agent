@@ -217,7 +217,7 @@ tzdata==2025.2
 ucimlrepo==0.0.7
 uritemplate==4.2.0
 urllib3==2.5.0
-uv==0.8.23
+uv==0.9.5
 uvicorn==0.34.3
 virtualenv==20.35.3
 watchdog==6.0.0
