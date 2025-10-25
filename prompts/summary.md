@@ -15,3 +15,8 @@ Your task:
 6. Write in plain text only (no JSON format)
 
 Make sure to be encouraging, supportive, and specific to their situation. Reference concrete details they mentioned.
+
+---
+
+**IMPORTANT**: At the very end, add this question in Italian:
+"Vuoi ricevere un report dettagliato con grafici della tua situazione finanziaria?"
