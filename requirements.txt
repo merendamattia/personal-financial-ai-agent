@@ -7,7 +7,6 @@ altair==5.5.0
 annotated-types==0.7.0
 antlr4-python3-runtime==4.9.3
 anyio==4.9.0
-appnope==0.1.4
 asttokens==3.0.0
 attrs==25.4.0
 beautifulsoup4==4.14.2
@@ -35,13 +34,11 @@ datapizza-ai-embedders-google==0.0.3
 datapizza-ai-embedders-openai==0.0.5
 datapizza-ai-parsers-docling==0.0.5
 datapizza-ai-vectorstores-qdrant==0.0.2
-ddgs==9.6.1
 debugpy==1.8.14
 decorator==5.2.1
 dill==0.4.0
 distlib==0.4.0
 distro==1.9.0
-docker==7.1.0
 easyocr==1.7.2
 et_xmlfile==2.0.0
 executing==2.2.0
@@ -101,7 +98,6 @@ kagglehub==0.3.12
 kiwisolver==1.4.8
 latex2mathml==3.78.1
 lazy_loader==0.4
-lxml==6.0.2
 Mako==1.3.10
 Markdown==3.8
 markdown-it-py==4.0.0
@@ -122,9 +118,7 @@ networkx==3.5
 ninja==1.13.0
 nodeenv==1.9.1
 numpy==2.2.6
-ocrmac==1.0.0
 omegaconf==2.3.0
-openai==1.109.1
 opencv-python==4.12.0.88
 opencv-python-headless==4.12.0.88
 openpyxl==3.1.5
@@ -164,11 +158,6 @@ pydantic_core==2.33.2
 pydeck==0.9.1
 Pygments==2.19.1
 pylatexenc==2.10
-pyobjc-core==11.1
-pyobjc-framework-Cocoa==11.1
-pyobjc-framework-CoreML==11.1
-pyobjc-framework-Quartz==11.1
-pyobjc-framework-Vision==11.1
 pyparsing==3.2.3
 pypdfium2==4.30.0
 pytest==8.4.2
@@ -218,10 +207,6 @@ tifffile==2025.10.16
 tiktoken==0.4.0
 tokenizers==0.22.1
 toml==0.10.2
-torch==2.5.1
-torchaudio==2.5.1
-torchsummary==1.5.1
-torchvision==0.20.1
 tornado==6.5.1
 tqdm==4.67.1
 traitlets==5.14.3
