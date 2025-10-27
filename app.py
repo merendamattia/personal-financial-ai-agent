@@ -474,9 +474,11 @@ def main():
             # Convert profile to dictionary for display
             profile_dict = st.session_state.financial_profile.dict()
 
-            # Create table data
+            # Create table data (excluding summary_notes)
             table_data = []
             for key, value in profile_dict.items():
+                if key == "summary_notes":  # Skip summary_notes for table
+                    continue
                 # Format key for display (snake_case to Title Case)
                 display_key = key.replace("_", " ").title()
                 # Format value
@@ -486,13 +488,18 @@ def main():
             # Display as table
             st.dataframe(
                 table_data,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
-                    "Field": st.column_config.Column(width=250),
+                    "Field": st.column_config.Column(width=100),
                     "Value": st.column_config.Column(width=None),
                 },
             )
+
+            # Display summary notes separately below table
+            if profile_dict.get("summary_notes"):
+                st.markdown("**📝 Summary Notes**")
+                st.write(profile_dict["summary_notes"])
 
             # Display JSON download option
             st.download_button(
