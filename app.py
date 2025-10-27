@@ -66,7 +66,7 @@ def is_ollama_available() -> bool:
         logger.debug("Trying localhost:11434")
         response = requests.get("http://localhost:11434/", timeout=2)
         is_available = "Ollama is running" in response.text
-        logger.info("✅ Ollama available at localhost:11434")
+        logger.info("Ollama available at localhost:11434")
         return is_available
     except Exception as e:
         logger.debug("localhost:11434 failed: %s", str(e))
