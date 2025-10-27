@@ -474,68 +474,36 @@ def main():
             # Convert profile to dictionary for display
             profile_dict = st.session_state.financial_profile.dict()
 
-            # Organize profile into sections
-            col1, col2 = st.columns(2)
+            # Create table data
+            table_data = []
+            for key, value in profile_dict.items():
+                # Format key for display (snake_case to Title Case)
+                display_key = key.replace("_", " ").title()
+                # Format value
+                display_value = value if value is not None else "N/A"
+                table_data.append({"Field": display_key, "Value": str(display_value)})
 
-            with col1:
-                st.markdown("**Personal & Employment**")
-                st.write(f"Age Range: {profile_dict.get('age_range', 'N/A')}")
-                st.write(f"Employment: {profile_dict.get('employment_status', 'N/A')}")
-                st.write(f"Occupation: {profile_dict.get('occupation', 'N/A')}")
+            # Display as table
+            st.dataframe(
+                table_data,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Field": st.column_config.Column(width=250),
+                    "Value": st.column_config.Column(width=None),
+                },
+            )
 
-                st.markdown("**Income**")
-                st.write(
-                    f"Annual Income: {profile_dict.get('annual_income_range', 'N/A')}"
-                )
-                st.write(f"Stability: {profile_dict.get('income_stability', 'N/A')}")
-                st.write(
-                    f"Additional Sources: {profile_dict.get('additional_income_sources', 'N/A')}"
-                )
-
-                st.markdown("**Risk & Knowledge**")
-                st.write(f"Risk Tolerance: {profile_dict.get('risk_tolerance', 'N/A')}")
-                st.write(
-                    f"Investment Experience: {profile_dict.get('investment_experience', 'N/A')}"
-                )
-                st.write(
-                    f"Financial Knowledge: {profile_dict.get('financial_knowledge_level', 'N/A')}"
-                )
-
-            with col2:
-                st.markdown("**Expenses & Debts**")
-                st.write(
-                    f"Monthly Expenses: {profile_dict.get('monthly_expenses_range', 'N/A')}"
-                )
-                st.write(f"Major Expenses: {profile_dict.get('major_expenses', 'N/A')}")
-                st.write(f"Total Debt: {profile_dict.get('total_debt', 'N/A')}")
-                st.write(f"Debt Types: {profile_dict.get('debt_types', 'N/A')}")
-
-                st.markdown("**Assets & Savings**")
-                st.write(f"Savings: {profile_dict.get('savings_amount', 'N/A')}")
-                st.write(
-                    f"Emergency Fund: {profile_dict.get('emergency_fund_months', 'N/A')} months"
-                )
-                st.write(f"Investments: {profile_dict.get('investments', 'N/A')}")
-
-                st.markdown("**Family & Insurance**")
-                st.write(f"Dependents: {profile_dict.get('family_dependents', 'N/A')}")
-                st.write(f"Insurance: {profile_dict.get('insurance_coverage', 'N/A')}")
-
-            # Display goals and notes
-            st.markdown("**Financial Goals**")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"Primary Goals: {profile_dict.get('primary_goals', 'N/A')}")
-                st.write(f"Short-term: {profile_dict.get('short_term_goals', 'N/A')}")
-            with col2:
-                st.write(f"Long-term: {profile_dict.get('long_term_goals', 'N/A')}")
-
-            if profile_dict.get("summary_notes"):
-                st.markdown("**Additional Notes**")
-                st.write(profile_dict["summary_notes"])
+            # Display JSON download option
+            st.download_button(
+                label="📥 Download Financial Profile (JSON)",
+                data=st.session_state.financial_profile.model_dump_json(indent=2),
+                file_name="financial_profile.json",
+                mime="application/json",
+                key="download_profile",
+            )
 
             # Display financial charts
-            st.divider()
             logger.debug("Preparing to display financial charts")
             try:
                 display_financial_charts(st.session_state.financial_profile)
@@ -544,15 +512,6 @@ def main():
                 logger.warning("Failed to display charts: %s", str(charts_error))
                 st.warning("Could not generate charts at this time")
 
-            # Display JSON download option
-            st.divider()
-            st.download_button(
-                label="📥 Download Financial Profile (JSON)",
-                data=st.session_state.financial_profile.model_dump_json(indent=2),
-                file_name="financial_profile.json",
-                mime="application/json",
-                key="download_profile",
-            )
         else:
             logger.debug("No financial profile available to display")
     else:
