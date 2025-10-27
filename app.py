@@ -9,6 +9,7 @@ import logging
 import os
 import time
 
+import pandas as pd
 import requests
 import streamlit as st
 from dotenv import load_dotenv
@@ -474,8 +475,8 @@ def main():
             # Convert profile to dictionary for display
             profile_dict = st.session_state.financial_profile.dict()
 
-            # Create table data (excluding summary_notes)
-            table_data = []
+            # Create DataFrame for table (excluding summary_notes)
+            table_data = {}
             for key, value in profile_dict.items():
                 if key == "summary_notes":  # Skip summary_notes for table
                     continue
@@ -483,18 +484,11 @@ def main():
                 display_key = key.replace("_", " ").title()
                 # Format value
                 display_value = value if value is not None else "N/A"
-                table_data.append({"Field": display_key, "Value": str(display_value)})
+                table_data[display_key] = [str(display_value)]
 
-            # Display as table
-            st.dataframe(
-                table_data,
-                width="stretch",
-                hide_index=True,
-                column_config={
-                    "Field": st.column_config.Column(width=100),
-                    "Value": st.column_config.Column(width=None),
-                },
-            )
+            # Convert to DataFrame and display as table
+            df = pd.DataFrame(table_data, index=["Data"]).T
+            st.table(df)
 
             # Display summary notes separately below table
             if profile_dict.get("summary_notes"):
