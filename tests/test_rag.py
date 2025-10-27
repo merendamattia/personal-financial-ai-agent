@@ -50,7 +50,7 @@ def create_test_profile() -> dict:
 def test_portfolio_generation():
     """Test portfolio generation with Google provider."""
     print("\n" + "=" * 80)
-    print("TEST 2: PORTFOLIO GENERATION WITH GOOGLE")
+    print("TEST: PORTFOLIO GENERATION WITH GOOGLE")
     print("=" * 80)
 
     try:
@@ -60,18 +60,18 @@ def test_portfolio_generation():
             name="FinancialAdvisor",
             provider="google",
         )
-        print("✓ ChatBotAgent initialized with Google provider")
+        print("ChatBotAgent initialized with Google provider")
 
         # Check RAG retriever
         if agent._rag_retriever:
-            print("✓ RAG retriever is available")
+            print("RAG retriever is available")
         else:
-            print("✗ RAG retriever not initialized")
+            print("RAG retriever not initialized")
             return False
 
         # Create test profile
         profile = create_test_profile()
-        print(f"\n✓ Test profile created with {len(profile)} fields")
+        print(f"\nTest profile created with {len(profile)} fields")
         print("Profile summary:")
         print(f"  - Age: {profile['age_range']}")
         print(f"  - Income: {profile['annual_income_range']}")
@@ -82,24 +82,24 @@ def test_portfolio_generation():
         print("\nGenerating portfolio with RAG context...")
         portfolio = agent.generate_balanced_portfolio(profile)
 
-        print("✓ Portfolio generated successfully!")
+        print("Portfolio generated successfully!")
         print("\nPortfolio Output:")
         print(json.dumps(portfolio, indent=2))
 
         # Validate structure
         if "portfolio_allocation" in portfolio:
             print(
-                f"\n✓ Portfolio allocation: {list(portfolio['portfolio_allocation'].keys())}"
+                f"\nPortfolio allocation: {list(portfolio['portfolio_allocation'].keys())}"
             )
         if "risk_level" in portfolio:
-            print(f"✓ Risk level: {portfolio['risk_level']}")
+            print(f"Risk level: {portfolio['risk_level']}")
         if "reasoning" in portfolio:
-            print(f"✓ Reasoning provided (length: {len(portfolio['reasoning'])} chars)")
+            print(f"Reasoning provided (length: {len(portfolio['reasoning'])} chars)")
 
         return True
 
     except Exception as e:
-        print(f"✗ Portfolio generation test failed: {e}")
+        print(f"Portfolio generation test failed: {e}")
         import traceback
 
         traceback.print_exc()
@@ -122,7 +122,7 @@ def main():
     print("=" * 80)
 
     for test_name, result in results:
-        status = "✓ PASSED" if result else "✗ FAILED"
+        status = "PASSED" if result else "FAILED"
         print(f"{test_name}: {status}")
 
     total = len(results)
