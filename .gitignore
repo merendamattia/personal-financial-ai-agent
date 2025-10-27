@@ -62,8 +62,8 @@ data/
 *.pickle
 
 # Cache
-*.cache
-.cache/
+*.cache*
+qdrant_storage/
 
 # Temporary files
 *.tmp
