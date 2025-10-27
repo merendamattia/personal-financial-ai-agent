@@ -29,11 +29,11 @@ datapizza-ai-clients-google==0.0.4
 datapizza-ai-clients-openai==0.0.6
 datapizza-ai-clients-openai-like==0.0.6
 datapizza-ai-core==0.0.5
-datapizza-ai-embedders-fastembedder==0.0.3
+datapizza-ai-embedders-fastembedder==0.0.4
 datapizza-ai-embedders-google==0.0.3
 datapizza-ai-embedders-openai==0.0.5
 datapizza-ai-parsers-docling==0.0.5
-datapizza-ai-vectorstores-qdrant==0.0.2
+datapizza-ai-vectorstores-qdrant==0.0.4
 debugpy==1.8.14
 decorator==5.2.1
 dill==0.4.0
