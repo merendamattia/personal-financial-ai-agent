@@ -54,21 +54,35 @@ st.markdown(
 
 def is_ollama_available() -> bool:
     """
-    Check if Ollama is running at localhost:11434.
+    Check if Ollama is available (localhost or docker container).
 
     Returns:
         True if Ollama is available, False otherwise
     """
-    logger.debug("Checking Ollama availability at localhost:11434")
+    logger.debug("Checking Ollama availability")
 
+    # Try localhost first (for local Ollama)
     try:
+        logger.debug("Trying localhost:11434")
         response = requests.get("http://localhost:11434/", timeout=2)
         is_available = "Ollama is running" in response.text
-        logger.info("Ollama availability check: %s", is_available)
+        logger.info("✅ Ollama available at localhost:11434")
         return is_available
-    except (requests.exceptions.RequestException, Exception) as e:
-        logger.warning("Ollama not available: %s", str(e))
-        return False
+    except Exception as e:
+        logger.debug("localhost:11434 failed: %s", str(e))
+
+    # Try docker container address (for docker-compose)
+    try:
+        logger.debug("Trying ollama:11434 (docker)")
+        response = requests.get("http://ollama:11434/", timeout=2)
+        is_available = "Ollama is running" in response.text
+        logger.info("Ollama available at ollama:11434 (docker)")
+        return is_available
+    except Exception as e:
+        logger.debug("ollama:11434 failed: %s", str(e))
+
+    logger.warning("Ollama not available on both addresses")
+    return False
 
 
 def get_available_providers() -> list:
