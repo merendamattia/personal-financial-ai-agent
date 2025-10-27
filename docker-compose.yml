@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: Dockerfile.ollama
       args:
-        - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2:0.6b}
+        - OLLAMA_MODEL=${OLLAMA_MODEL}
     container_name: financial-ai-ollama
     ports:
       - "11434:11434"

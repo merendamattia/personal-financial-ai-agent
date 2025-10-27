@@ -53,7 +53,7 @@ docker compose down # shutdown
 
 This will start:
 - **financial-ai-agent** on http://localhost:8501
-- **ollama** on http://localhost:11434 (automatically downloads `qwen2:0.6b` model on first start)
+- **ollama** on http://localhost:11434 (automatically downloads the model in `.env` file on first start)
 
 The first startup may take a few minutes while Ollama downloads the model.
 

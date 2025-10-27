@@ -1,7 +1,7 @@
 # Ollama Dockerfile with automatic model pull
 FROM ollama/ollama:0.12.6
 
-ARG OLLAMA_MODEL=qwen2:0.6b
+ARG OLLAMA_MODEL
 ENV OLLAMA_MODEL=${OLLAMA_MODEL}
 
 # Pull model during build
