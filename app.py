@@ -229,6 +229,9 @@ def main():
     if "financial_profile" not in st.session_state:
         st.session_state.financial_profile = None
         logger.debug("Initialized financial_profile session state to None")
+    if "generated_portfolio" not in st.session_state:
+        st.session_state.generated_portfolio = None
+        logger.debug("Initialized generated_portfolio session state to None")
     if "health_check_done" not in st.session_state:
         st.session_state.health_check_done = False
         logger.debug("Initialized health_check_done session state to False")
@@ -397,6 +400,7 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.rerun()
@@ -410,6 +414,7 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.success("Conversation cleared!")
@@ -518,14 +523,111 @@ def main():
                 key="download_profile",
             )
 
-            # Display financial charts
-            logger.debug("Preparing to display financial charts")
-            try:
-                display_financial_charts(st.session_state.financial_profile)
-                logger.info("Financial charts displayed successfully")
-            except Exception as charts_error:
-                logger.warning("Failed to display charts: %s", str(charts_error))
-                st.warning("Could not generate charts at this time")
+            # # Display financial charts
+            # logger.debug("Preparing to display financial charts")
+            # try:
+            #     display_financial_charts(st.session_state.financial_profile)
+            #     logger.info("Financial charts displayed successfully")
+            # except Exception as charts_error:
+            #     logger.warning("Failed to display charts: %s", str(charts_error))
+            #     st.warning("Could not generate charts at this time")
+
+            # Generate balanced portfolio based on profile
+            st.divider()
+            st.subheader("💼 AI-Generated Portfolio Recommendation")
+
+            logger.debug("Preparing portfolio generation")
+
+            # Create portfolio generation button
+            if st.button("Generate Portfolio with RAG", key="generate_portfolio"):
+                logger.info("Portfolio generation requested")
+
+                with st.spinner(
+                    "🔄 Analyzing profile and retrieving relevant ETF assets..."
+                ):
+                    try:
+                        # Convert FinancialProfile object to dict for agent
+                        profile_dict = st.session_state.financial_profile.dict()
+
+                        logger.debug(
+                            "Converting profile to dict for portfolio generation"
+                        )
+
+                        # Generate portfolio using RAG-enhanced agent
+                        portfolio = agent.generate_balanced_portfolio(profile_dict)
+
+                        logger.info("Portfolio generated successfully")
+                        st.session_state.generated_portfolio = portfolio
+
+                    except Exception as portfolio_error:
+                        logger.error(
+                            "Failed to generate portfolio: %s",
+                            str(portfolio_error),
+                            exc_info=True,
+                        )
+                        st.error(
+                            f"❌ Failed to generate portfolio: {str(portfolio_error)}"
+                        )
+                        st.session_state.generated_portfolio = None
+
+            # Display generated portfolio if available
+            if (
+                "generated_portfolio" in st.session_state
+                and st.session_state.generated_portfolio
+            ):
+                portfolio = st.session_state.generated_portfolio
+
+                logger.debug("Displaying generated portfolio")
+
+                # Display portfolio allocation
+                if "portfolio_allocation" in portfolio:
+                    st.markdown("### 📈 Portfolio Allocation")
+
+                    allocation = portfolio["portfolio_allocation"]
+
+                    # Display allocation as columns with justifications
+                    for asset, asset_data in allocation.items():
+                        if isinstance(asset_data, dict) and "percentage" in asset_data:
+                            percentage = asset_data["percentage"]
+                            justification = asset_data.get("justification", "")
+
+                            col1, col2 = st.columns([1, 3])
+                            with col1:
+                                st.metric(asset, f"{percentage}%")
+                            with col2:
+                                st.caption(justification)
+                        else:
+                            # Backward compatibility if asset_data is just a number
+                            st.metric(asset, f"{asset_data}%")
+
+                # Display overall strategy reasoning
+                if "portfolio_reasoning" in portfolio:
+                    st.markdown("### 🎯 Investment Strategy")
+                    st.info(portfolio["portfolio_reasoning"])
+
+                # Display risk level
+                if "risk_level" in portfolio:
+                    risk_level = portfolio["risk_level"].upper()
+                    if risk_level == "CONSERVATIVE":
+                        st.success(f"**Risk Level**: 🛡️ {risk_level}")
+                    elif risk_level == "MODERATE":
+                        st.info(f"**Risk Level**: ⚖️ {risk_level}")
+                    else:
+                        st.warning(f"**Risk Level**: ⚡ {risk_level}")
+
+                # Display rebalancing schedule
+                if "rebalancing_schedule" in portfolio:
+                    st.markdown(
+                        f"**Rebalancing Schedule**: {portfolio['rebalancing_schedule']}"
+                    )
+
+                # Display key considerations
+                if "key_considerations" in portfolio:
+                    st.markdown("### 📋 Key Considerations")
+                    for consideration in portfolio["key_considerations"]:
+                        st.write(f"• {consideration}")
+
+                logger.info("Portfolio display completed")
 
         else:
             logger.debug("No financial profile available to display")
