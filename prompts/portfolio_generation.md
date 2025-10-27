@@ -28,6 +28,7 @@ Design an optimal portfolio allocation that:
 ## Geographic Allocation Strategy:
 - **Default approach**: Use broad global ETFs (e.g., VXUS, EFA, VEA for international diversification)
 - **Geographic allocation from profile**: Respect client's stated geographic preferences (e.g., "70% USA, 30% International")
+- **Global balanced allocation**: If client specifies "global balanced" or similar (e.g., "Global balanced", "World diversified", "Global mix"), use **MSCI World ETF (SWDA)** as the primary equity holding to simplify the portfolio
 - **Sector-specific ETFs**: Use ONLY if client explicitly mentions sector preferences (e.g., "tech focus", "healthcare investment")
 - **Without sector preference**: Stick to broad market/global ETFs for maximum diversification and lower costs
 - **Geographic reasoning**: Include in justification why specific geographic regions were chosen based on client profile
@@ -56,8 +57,7 @@ Provide your response as valid JSON with justified asset selection:
     "Specific consideration 1 based on client profile",
     "Specific consideration 2 based on client profile",
     "Specific consideration 3 based on client profile"
-  ],
-  "implementation_notes": "Practical steps for the client to implement this portfolio"
+  ]
 }}
 ```
 
