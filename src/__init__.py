@@ -1,7 +1,8 @@
 """
 Financial AI Agent - Main package.
 
-This package contains the core components for the financial AI agent.
+This package contains the core components for the financial AI agent,
+including conversational chat capabilities and portfolio generation.
 """
 
 from src.chatbot_agent import ChatBotAgent
