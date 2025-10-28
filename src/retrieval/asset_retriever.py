@@ -128,14 +128,15 @@ class RAGAssetRetriever:
                 if not txt.strip():
                     logger.debug("Skipping empty PDF: %s", pdf.name)
                     continue
-                for i, ch in enumerate(self._chunk_text(txt)):
+                chunks = self._chunk_text(txt)
+                for i, ch in enumerate(chunks):
                     docs.append(
                         {"id": f"{pdf.name}::chunk_{i}", "source": str(pdf), "text": ch}
                     )
                 logger.debug(
                     "Processed PDF: %s (%d chunks)",
                     pdf.name,
-                    len(self._chunk_text(txt)),
+                    len(chunks),
                 )
             except Exception as e:
                 logger.error("Error parsing %s: %s", pdf, e)
