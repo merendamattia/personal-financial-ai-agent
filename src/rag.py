@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from tqdm import tqdm
 
 # Configure logging
 logging.basicConfig(
