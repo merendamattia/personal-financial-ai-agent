@@ -10,7 +10,7 @@ on:
       - main
 
 jobs:
-  docker-test:
+  docker-build-test:
     runs-on: ubuntu-latest
 
     steps:

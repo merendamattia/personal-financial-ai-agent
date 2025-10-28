@@ -9,14 +9,14 @@ import logging
 import os
 import time
 
+import pandas as pd
 import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.charts import display_financial_charts
-from src.chatbot_agent import ChatBotAgent
 from src.clients import list_providers
-from src.financial_profile import FinancialProfile
+from src.core import ChatBotAgent
+from src.models import FinancialProfile, Portfolio
 
 # Configure logging
 logging.basicConfig(
@@ -53,21 +53,35 @@ st.markdown(
 
 def is_ollama_available() -> bool:
     """
-    Check if Ollama is running at localhost:11434.
+    Check if Ollama is available (localhost or docker container).
 
     Returns:
         True if Ollama is available, False otherwise
     """
-    logger.debug("Checking Ollama availability at localhost:11434")
+    logger.debug("Checking Ollama availability")
 
+    # Try localhost first (for local Ollama)
     try:
+        logger.debug("Trying localhost:11434")
         response = requests.get("http://localhost:11434/", timeout=2)
         is_available = "Ollama is running" in response.text
-        logger.info("Ollama availability check: %s", is_available)
+        logger.info("Ollama available at localhost:11434")
         return is_available
-    except (requests.exceptions.RequestException, Exception) as e:
-        logger.warning("Ollama not available: %s", str(e))
-        return False
+    except Exception as e:
+        logger.debug("localhost:11434 failed: %s", str(e))
+
+    # Try docker container address (for docker-compose)
+    try:
+        logger.debug("Trying ollama:11434 (docker)")
+        response = requests.get("http://ollama:11434/", timeout=2)
+        is_available = "Ollama is running" in response.text
+        logger.info("Ollama available at ollama:11434 (docker)")
+        return is_available
+    except Exception as e:
+        logger.debug("ollama:11434 failed: %s", str(e))
+
+    logger.warning("Ollama not available on both addresses")
+    return False
 
 
 def get_available_providers() -> list:
@@ -191,6 +205,50 @@ def stream_text(text: str, chunk_size: int = 20):
         time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
+def generate_portfolio_for_profile(agent, profile):
+    """
+    Generate a balanced portfolio for the given financial profile.
+
+    Args:
+        agent: The ChatBotAgent instance
+        profile: The FinancialProfile object
+
+    Returns:
+        The generated Portfolio object, or None if generation failed
+    """
+    logger.info("Starting portfolio generation for profile")
+
+    try:
+        # Convert FinancialProfile object to dict for agent
+        profile_dict = profile.model_dump()
+
+        logger.debug("Converting profile to dict for portfolio generation")
+
+        # Generate portfolio using RAG-enhanced agent with structured response
+        portfolio = agent.generate_balanced_portfolio(profile_dict)
+
+        logger.info("Portfolio generated successfully")
+        if portfolio:
+            assets_count = len(portfolio.assets) if hasattr(portfolio, "assets") else 0
+            risk = portfolio.risk_level if hasattr(portfolio, "risk_level") else None
+            logger.debug(
+                "Portfolio structure: assets_count=%d, risk_level=%s",
+                assets_count,
+                risk,
+            )
+
+        return portfolio
+
+    except Exception as portfolio_error:
+        logger.error(
+            "Failed to generate portfolio: %s",
+            str(portfolio_error),
+            exc_info=True,
+        )
+        st.error(f"❌ Failed to generate portfolio: {str(portfolio_error)}")
+        return None
+
+
 def main():
     """Main Streamlit application."""
     logger.debug("Starting main Streamlit application")
@@ -214,6 +272,9 @@ def main():
     if "financial_profile" not in st.session_state:
         st.session_state.financial_profile = None
         logger.debug("Initialized financial_profile session state to None")
+    if "generated_portfolio" not in st.session_state:
+        st.session_state.generated_portfolio = None
+        logger.debug("Initialized generated_portfolio session state to None")
     if "health_check_done" not in st.session_state:
         st.session_state.health_check_done = False
         logger.debug("Initialized health_check_done session state to False")
@@ -382,6 +443,7 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.rerun()
@@ -395,6 +457,7 @@ def main():
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
             st.session_state.financial_profile = None
+            st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.success("Conversation cleared!")
@@ -402,9 +465,18 @@ def main():
         # Test with demo profile button
         if st.button("🧪 Load Test Profile", use_container_width=True):
             logger.info("Loading test financial profile")
-            st.session_state.financial_profile = get_test_financial_profile()
+            test_profile = get_test_financial_profile()
+            st.session_state.financial_profile = test_profile
             st.session_state.conversation_completed = True
-            st.success("✅ Test profile loaded! Scroll down to see charts.")
+
+            # Generate portfolio automatically
+            logger.info("Auto-generating portfolio for test profile")
+            portfolio = generate_portfolio_for_profile(agent, test_profile)
+            if portfolio:
+                st.session_state.generated_portfolio = portfolio
+                logger.info("Portfolio auto-generated successfully")
+
+            st.success("✅ Test profile loaded with auto-generated portfolio!")
             st.rerun()
 
         # Model info
@@ -472,80 +544,29 @@ def main():
             st.subheader("📊 Financial Profile Summary")
 
             # Convert profile to dictionary for display
-            profile_dict = st.session_state.financial_profile.dict()
+            profile_dict = st.session_state.financial_profile.model_dump()
 
-            # Organize profile into sections
-            col1, col2 = st.columns(2)
+            # Create DataFrame for table (excluding summary_notes)
+            table_data = {}
+            for key, value in profile_dict.items():
+                if key == "summary_notes":  # Skip summary_notes for table
+                    continue
+                # Format key for display (snake_case to Title Case)
+                display_key = key.replace("_", " ").title()
+                # Format value
+                display_value = value if value is not None else "N/A"
+                table_data[display_key] = [str(display_value)]
 
-            with col1:
-                st.markdown("**Personal & Employment**")
-                st.write(f"Age Range: {profile_dict.get('age_range', 'N/A')}")
-                st.write(f"Employment: {profile_dict.get('employment_status', 'N/A')}")
-                st.write(f"Occupation: {profile_dict.get('occupation', 'N/A')}")
+            # Convert to DataFrame and display as table
+            df = pd.DataFrame(table_data, index=["Data"]).T
+            st.table(df)
 
-                st.markdown("**Income**")
-                st.write(
-                    f"Annual Income: {profile_dict.get('annual_income_range', 'N/A')}"
-                )
-                st.write(f"Stability: {profile_dict.get('income_stability', 'N/A')}")
-                st.write(
-                    f"Additional Sources: {profile_dict.get('additional_income_sources', 'N/A')}"
-                )
-
-                st.markdown("**Risk & Knowledge**")
-                st.write(f"Risk Tolerance: {profile_dict.get('risk_tolerance', 'N/A')}")
-                st.write(
-                    f"Investment Experience: {profile_dict.get('investment_experience', 'N/A')}"
-                )
-                st.write(
-                    f"Financial Knowledge: {profile_dict.get('financial_knowledge_level', 'N/A')}"
-                )
-
-            with col2:
-                st.markdown("**Expenses & Debts**")
-                st.write(
-                    f"Monthly Expenses: {profile_dict.get('monthly_expenses_range', 'N/A')}"
-                )
-                st.write(f"Major Expenses: {profile_dict.get('major_expenses', 'N/A')}")
-                st.write(f"Total Debt: {profile_dict.get('total_debt', 'N/A')}")
-                st.write(f"Debt Types: {profile_dict.get('debt_types', 'N/A')}")
-
-                st.markdown("**Assets & Savings**")
-                st.write(f"Savings: {profile_dict.get('savings_amount', 'N/A')}")
-                st.write(
-                    f"Emergency Fund: {profile_dict.get('emergency_fund_months', 'N/A')} months"
-                )
-                st.write(f"Investments: {profile_dict.get('investments', 'N/A')}")
-
-                st.markdown("**Family & Insurance**")
-                st.write(f"Dependents: {profile_dict.get('family_dependents', 'N/A')}")
-                st.write(f"Insurance: {profile_dict.get('insurance_coverage', 'N/A')}")
-
-            # Display goals and notes
-            st.markdown("**Financial Goals**")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"Primary Goals: {profile_dict.get('primary_goals', 'N/A')}")
-                st.write(f"Short-term: {profile_dict.get('short_term_goals', 'N/A')}")
-            with col2:
-                st.write(f"Long-term: {profile_dict.get('long_term_goals', 'N/A')}")
-
+            # Display summary notes separately below table
             if profile_dict.get("summary_notes"):
-                st.markdown("**Additional Notes**")
+                st.markdown("**📝 Summary Notes**")
                 st.write(profile_dict["summary_notes"])
 
-            # Display financial charts
-            st.divider()
-            logger.debug("Preparing to display financial charts")
-            try:
-                display_financial_charts(st.session_state.financial_profile)
-                logger.info("Financial charts displayed successfully")
-            except Exception as charts_error:
-                logger.warning("Failed to display charts: %s", str(charts_error))
-                st.warning("Could not generate charts at this time")
-
             # Display JSON download option
-            st.divider()
             st.download_button(
                 label="📥 Download Financial Profile (JSON)",
                 data=st.session_state.financial_profile.model_dump_json(indent=2),
@@ -553,6 +574,132 @@ def main():
                 mime="application/json",
                 key="download_profile",
             )
+
+            # Generate balanced portfolio based on profile
+            st.divider()
+            st.subheader("💼 AI-Generated Portfolio Recommendation")
+
+            logger.debug("Preparing portfolio generation")
+            logger.debug(
+                "Generated portfolio state: %s", st.session_state.generated_portfolio
+            )
+
+            # Auto-generate portfolio if not already generated
+            if not st.session_state.generated_portfolio:
+                logger.info("Portfolio not yet generated, auto-generating...")
+                with st.spinner(
+                    "🔄 Analyzing profile and retrieving relevant ETF assets..."
+                ):
+                    portfolio = generate_portfolio_for_profile(
+                        agent, st.session_state.financial_profile
+                    )
+                    if portfolio:
+                        st.session_state.generated_portfolio = portfolio
+                        logger.info("Portfolio auto-generated successfully")
+                        st.rerun()
+                    else:
+                        logger.warning("Failed to generate portfolio")
+                        st.error(
+                            "❌ Could not auto-generate portfolio. Try clicking the button below."
+                        )
+                        if st.button(
+                            "Generate Portfolio with RAG", key="generate_portfolio"
+                        ):
+                            logger.info("Portfolio generation requested manually")
+                            portfolio = generate_portfolio_for_profile(
+                                agent, st.session_state.financial_profile
+                            )
+                            if portfolio:
+                                st.session_state.generated_portfolio = portfolio
+                                st.rerun()
+            else:
+                logger.debug("Portfolio already generated, displaying...")
+
+            # Display generated portfolio if available
+            if (
+                "generated_portfolio" in st.session_state
+                and st.session_state.generated_portfolio
+            ):
+                portfolio = st.session_state.generated_portfolio
+
+                logger.debug("Displaying generated portfolio")
+
+                # Display portfolio allocation
+                st.markdown("### 📈 Portfolio Allocation")
+
+                # Helper function to display asset
+                def display_asset(asset_name, percentage, justification):
+                    if asset_name and percentage:
+                        col1, col2 = st.columns([1, 3])
+                        with col1:
+                            st.metric(asset_name, f"{percentage}%")
+                        with col2:
+                            st.caption(justification if justification else "")
+
+                # Display all assets from the portfolio (new structure with nested assets)
+                if "assets" in portfolio and isinstance(portfolio["assets"], list):
+                    for asset in portfolio["assets"]:
+                        display_asset(
+                            asset.get("symbol")
+                            if isinstance(asset, dict)
+                            else asset.symbol,
+                            asset.get("percentage")
+                            if isinstance(asset, dict)
+                            else asset.percentage,
+                            asset.get("justification")
+                            if isinstance(asset, dict)
+                            else asset.justification,
+                        )
+
+                # Display overall strategy reasoning
+                if "portfolio_reasoning" in portfolio:
+                    st.markdown("### 🎯 Investment Strategy")
+                    st.info(portfolio["portfolio_reasoning"])
+
+                # Display risk level
+                if "risk_level" in portfolio:
+                    # Extract the value from the risk_level (could be enum or string)
+                    risk_value = portfolio["risk_level"]
+                    if isinstance(risk_value, str):
+                        risk_level = risk_value.upper()
+                    else:
+                        # Handle enum or other types
+                        risk_level = str(risk_value).replace("RiskLevel.", "").upper()
+
+                    if risk_level == "CONSERVATIVE":
+                        st.success(f"**Risk Level**: 🛡️ {risk_level}")
+                    elif risk_level == "MODERATE":
+                        st.info(f"**Risk Level**: ⚖️ {risk_level}")
+                    else:
+                        st.warning(f"**Risk Level**: ⚡ {risk_level}")
+
+                # Display rebalancing schedule
+                if "rebalancing_schedule" in portfolio:
+                    st.markdown(
+                        f"**Rebalancing Schedule**: {portfolio['rebalancing_schedule']}"
+                    )
+
+                # Display key considerations
+                if (
+                    "key_considerations" in portfolio
+                    and portfolio["key_considerations"]
+                ):
+                    st.markdown("### 📋 Key Considerations")
+                    # Handle list of considerations
+                    if isinstance(portfolio["key_considerations"], list):
+                        for consideration in portfolio["key_considerations"]:
+                            if consideration:
+                                st.write(f"• {consideration}")
+                    else:
+                        # Fallback for string format (old structure)
+                        considerations = portfolio["key_considerations"].split(";")
+                        for consideration in considerations:
+                            consideration = consideration.strip()
+                            if consideration:
+                                st.write(f"• {consideration}")
+
+                logger.info("Portfolio display completed")
+
         else:
             logger.debug("No financial profile available to display")
     else:

@@ -30,7 +30,7 @@
     },
     {
       "id": 8,
-      "text": "Hai investimenti? Se sì, dove e quale è la tua esperienza con gli investimenti? (azioni, ETF, immobili; principiante/intermedia/avanzata)"
+      "text": "Hai investimenti attivi? (azioni, ETF, immobili, ecc.)"
     },
     {
       "id": 9,
@@ -50,10 +50,14 @@
     },
     {
       "id": 13,
-      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+      "text": "Per quanto riguarda gli investimenti geografici, preferisci mercati emergenti, USA, Europa, oppure una distribuzione bilanciata globale?"
     },
     {
       "id": 14,
+      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+    },
+    {
+      "id": 15,
       "text": "C'è qualcos'altro di importante sulla tua situazione finanziaria che vorresti condividere?"
     }
   ]

@@ -19,4 +19,4 @@ Make sure to be encouraging, supportive, and specific to their situation. Refere
 ---
 
 **IMPORTANT**: At the very end, add this question in Italian:
-"Vuoi ricevere un report dettagliato con grafici della tua situazione finanziaria?"
+"Vuoi ricevere un AI-Generated Portfolio costruito sulla tua situazione finanziaria?"

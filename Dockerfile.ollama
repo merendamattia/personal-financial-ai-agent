@@ -1,0 +1,12 @@
+# Ollama Dockerfile with automatic model pull
+FROM ollama/ollama:0.12.6
+
+ARG OLLAMA_MODEL
+ENV OLLAMA_MODEL=${OLLAMA_MODEL}
+
+# Pull model during build
+RUN /bin/ollama serve & sleep 15 && /bin/ollama pull ${OLLAMA_MODEL} && pkill -f "ollama serve"
+
+# Start ollama when container runs
+ENTRYPOINT ["/bin/ollama"]
+CMD ["serve"]

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   financial-ai-agent:
     build:
@@ -16,8 +14,29 @@ services:
     networks:
       - financial-network
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434/v1
+
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+      args:
+        - OLLAMA_MODEL=${OLLAMA_MODEL}
+    container_name: financial-ai-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - financial-network
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+    driver: local
 
 networks:
   financial-network:

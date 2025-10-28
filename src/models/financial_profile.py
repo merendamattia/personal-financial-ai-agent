@@ -93,6 +93,12 @@ class FinancialProfile(BaseModel):
         description="Financial knowledge level (beginner, intermediate, advanced)"
     )
 
+    # Investment Geography
+    geographic_allocation: Optional[str] = Field(
+        default="Global balanced",
+        description="Geographic investment preference (emerging markets, USA, Europe, global balanced, etc.)",
+    )
+
     # Other Information
     family_dependents: Optional[str] = Field(
         default=None, description="Number of dependents or family situation"
@@ -109,7 +115,7 @@ class FinancialProfile(BaseModel):
         """Pydantic config."""
 
         json_schema_extra = {
-            "example": {
+            "financial_profile": {
                 "age_range": "30-39",
                 "employment_status": "employed",
                 "occupation": "Software Engineer",
@@ -130,6 +136,7 @@ class FinancialProfile(BaseModel):
                 "risk_tolerance": "moderate",
                 "risk_concerns": "Market volatility concerns",
                 "financial_knowledge_level": "intermediate",
+                "geographic_allocation": "Global balanced",
                 "family_dependents": "2 children",
                 "insurance_coverage": "Health, Life, Home insurance",
                 "summary_notes": "User shows good financial discipline and awareness",

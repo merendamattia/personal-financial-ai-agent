@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  release:
+  release-on-dockerhub:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
