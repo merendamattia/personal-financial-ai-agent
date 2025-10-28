@@ -5,71 +5,47 @@ This module defines the Portfolio class that represents
 a structured investment portfolio recommendation.
 """
 
-from typing import Optional
+from enum import Enum
+from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class RiskLevel(str, Enum):
+    """Portfolio risk levels."""
+
+    CONSERVATIVE = "conservative"
+    MODERATE = "moderate"
+    AGGRESSIVE = "aggressive"
+
+
+class Asset(BaseModel):
+    """Individual asset allocation within a portfolio."""
+
+    symbol: str = Field(
+        ..., description="Asset symbol or name (e.g., 'SWDA', 'SBXL', 'Gold')"
+    )
+    percentage: float = Field(
+        ..., ge=0, le=100, description="Percentage allocation for this asset (0-100)"
+    )
+    justification: str = Field(
+        ..., description="Why this asset was chosen for this client profile"
+    )
 
 
 class Portfolio(BaseModel):
-    """Structured portfolio recommendation."""
+    """Structured portfolio recommendation with nested asset allocations."""
 
-    # Primary allocation (main assets)
-    primary_asset: str = Field(
-        ..., description="Primary asset symbol or name (e.g., 'SWDA', etc.)"
-    )
-    primary_asset_percentage: float = Field(
-        ..., description="Percentage allocation for primary asset (0-100)"
-    )
-    primary_asset_justification: str = Field(
-        ..., description="Why this primary asset was chosen for this client profile"
-    )
-
-    # Secondary allocation
-    secondary_asset: Optional[str] = Field(
-        default=None, description="Secondary asset symbol or name"
-    )
-    secondary_asset_percentage: Optional[float] = Field(
-        default=None, description="Percentage allocation for secondary asset (0-100)"
-    )
-    secondary_asset_justification: Optional[str] = Field(
-        default=None, description="Why this secondary asset was chosen"
-    )
-
-    # Tertiary allocation
-    tertiary_asset: Optional[str] = Field(
-        default=None, description="Tertiary asset symbol or name"
-    )
-    tertiary_asset_percentage: Optional[float] = Field(
-        default=None, description="Percentage allocation for tertiary asset (0-100)"
-    )
-    tertiary_asset_justification: Optional[str] = Field(
-        default=None, description="Why this tertiary asset was chosen"
-    )
-
-    # Quaternary allocation
-    quaternary_asset: Optional[str] = Field(
-        default=None, description="Quaternary asset symbol or name"
-    )
-    quaternary_asset_percentage: Optional[float] = Field(
-        default=None, description="Percentage allocation for quaternary asset (0-100)"
-    )
-    quaternary_asset_justification: Optional[str] = Field(
-        default=None, description="Why this quaternary asset was chosen"
-    )
-
-    # Quinary allocation
-    quinary_asset: Optional[str] = Field(
-        default=None, description="Quinary asset symbol or name"
-    )
-    quinary_asset_percentage: Optional[float] = Field(
-        default=None, description="Percentage allocation for quinary asset (0-100)"
-    )
-    quinary_asset_justification: Optional[str] = Field(
-        default=None, description="Why this quinary asset was chosen"
+    # Asset allocations
+    assets: List[Asset] = Field(
+        ...,
+        min_items=1,
+        max_items=10,
+        description="List of assets in the portfolio (min 1, max 10)",
     )
 
     # Portfolio strategy
-    risk_level: str = Field(
+    risk_level: RiskLevel = Field(
         ..., description="Risk level (conservative, moderate, aggressive)"
     )
     portfolio_reasoning: str = Field(
@@ -78,37 +54,55 @@ class Portfolio(BaseModel):
     )
 
     # Considerations and recommendations
-    key_considerations: str = Field(
+    key_considerations: List[str] = Field(
         ...,
-        description="Key considerations separated by semicolons (e.g., 'consideration1; consideration2; consideration3')",
+        min_items=1,
+        description="Key considerations for this portfolio (e.g., 'Regular monthly contributions recommended', 'Review allocation annually')",
     )
-    rebalancing_schedule: Optional[str] = Field(
-        default=None, description="Recommended rebalancing schedule"
+    rebalancing_schedule: str = Field(
+        ...,
+        description="Recommended rebalancing schedule (e.g., 'Annually or when allocations drift >5%')",
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_schema_extra={
             "example": {
-                "primary_asset": "SWDA",
-                "primary_asset_percentage": 60,
-                "primary_asset_justification": "Global diversified equity exposure for long-term growth",
-                "secondary_asset": "SBXL",
-                "secondary_asset_percentage": 30,
-                "secondary_asset_justification": "European bonds for stability and income",
-                "tertiary_asset": "Gold",
-                "tertiary_asset_percentage": 10,
-                "tertiary_asset_justification": "Precious metals hedge for portfolio protection",
-                "quaternary_asset": None,
-                "quaternary_asset_percentage": None,
-                "quaternary_asset_justification": None,
-                "quinary_asset": None,
-                "quinary_asset_percentage": None,
-                "quinary_asset_justification": None,
+                "assets": [
+                    {
+                        "symbol": "SWDA",
+                        "percentage": 60,
+                        "justification": "Global diversified equity exposure for long-term growth",
+                    },
+                    {
+                        "symbol": "SBXL",
+                        "percentage": 30,
+                        "justification": "European bonds for stability and income",
+                    },
+                    {
+                        "symbol": "Gold",
+                        "percentage": 10,
+                        "justification": "Precious metals hedge for portfolio protection",
+                    },
+                ],
                 "risk_level": "moderate",
-                "portfolio_reasoning": "This balanced allocation combines growth potential with downside protection, suitable for a moderate investor",
-                "key_considerations": "Regular monthly contributions recommended; Review allocation annually; Consider tax-efficient placement",
+                "portfolio_reasoning": "This balanced allocation combines growth potential with downside protection, suitable for a moderate investor with intermediate experience",
+                "key_considerations": [
+                    "Regular monthly contributions recommended",
+                    "Review allocation annually",
+                    "Consider tax-efficient placement",
+                ],
                 "rebalancing_schedule": "Annually or when allocations drift >5%",
             }
-        }
+        },
+    )
+
+    @model_validator(mode="after")
+    def validate_total_percentage(self):
+        """Validate that asset percentages sum to approximately 100."""
+        total = sum(asset.percentage for asset in self.assets)
+        if not (99 <= total <= 101):
+            raise ValueError(
+                f"Asset percentages must sum to 100%, got {total}% instead"
+            )
+        return self

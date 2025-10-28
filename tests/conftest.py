@@ -43,26 +43,34 @@ def sample_financial_profile():
 @pytest.fixture
 def sample_portfolio():
     """Create a sample portfolio for testing."""
+    from src.models.portfolio import Asset
+
     return Portfolio(
-        primary_asset="SWDA",
-        primary_asset_percentage=60.0,
-        primary_asset_justification="Global diversified equity exposure",
-        secondary_asset="SBXL",
-        secondary_asset_percentage=30.0,
-        secondary_asset_justification="European bonds for stability",
-        tertiary_asset="Gold",
-        tertiary_asset_percentage=10.0,
-        tertiary_asset_justification="Precious metals hedge",
-        quaternary_asset=None,
-        quaternary_asset_percentage=None,
-        quaternary_asset_justification=None,
-        quinary_asset=None,
-        quinary_asset_percentage=None,
-        quinary_asset_justification=None,
+        assets=[
+            Asset(
+                symbol="SWDA",
+                percentage=60.0,
+                justification="Global diversified equity exposure for long-term growth",
+            ),
+            Asset(
+                symbol="SBXL",
+                percentage=30.0,
+                justification="European bonds for stability and income",
+            ),
+            Asset(
+                symbol="Gold",
+                percentage=10.0,
+                justification="Precious metals hedge for portfolio protection",
+            ),
+        ],
         risk_level="moderate",
-        portfolio_reasoning="Balanced allocation for moderate investor",
-        key_considerations="Monthly contributions; Annual review; Tax-efficient",
-        rebalancing_schedule="Annually or when drift >5%",
+        portfolio_reasoning="Balanced allocation combines growth potential with downside protection",
+        key_considerations=[
+            "Regular monthly contributions recommended",
+            "Review allocation annually",
+            "Consider tax-efficient placement",
+        ],
+        rebalancing_schedule="Annually or when allocations drift >5%",
     )
 
 

@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 from src.clients import list_providers
 from src.core import ChatBotAgent
-from src.models import FinancialProfile
+from src.models import FinancialProfile, Portfolio
 
 # Configure logging
 logging.basicConfig(
@@ -214,7 +214,7 @@ def generate_portfolio_for_profile(agent, profile):
         profile: The FinancialProfile object
 
     Returns:
-        The generated portfolio dictionary, or None if generation failed
+        The generated Portfolio object, or None if generation failed
     """
     logger.info("Starting portfolio generation for profile")
 
@@ -229,10 +229,12 @@ def generate_portfolio_for_profile(agent, profile):
 
         logger.info("Portfolio generated successfully")
         if portfolio:
-            primary = portfolio.get("primary_asset")
-            risk = portfolio.get("risk_level")
+            assets_count = len(portfolio.assets) if hasattr(portfolio, "assets") else 0
+            risk = portfolio.risk_level if hasattr(portfolio, "risk_level") else None
             logger.debug(
-                "Portfolio structure: primary_asset=%s, risk_level=%s", primary, risk
+                "Portfolio structure: assets_count=%d, risk_level=%s",
+                assets_count,
+                risk,
             )
 
         return portfolio
@@ -634,36 +636,20 @@ def main():
                         with col2:
                             st.caption(justification if justification else "")
 
-                # Display all assets
-                display_asset(
-                    portfolio.get("primary_asset"),
-                    portfolio.get("primary_asset_percentage"),
-                    portfolio.get("primary_asset_justification"),
-                )
-                if portfolio.get("secondary_asset"):
-                    display_asset(
-                        portfolio.get("secondary_asset"),
-                        portfolio.get("secondary_asset_percentage"),
-                        portfolio.get("secondary_asset_justification"),
-                    )
-                if portfolio.get("tertiary_asset"):
-                    display_asset(
-                        portfolio.get("tertiary_asset"),
-                        portfolio.get("tertiary_asset_percentage"),
-                        portfolio.get("tertiary_asset_justification"),
-                    )
-                if portfolio.get("quaternary_asset"):
-                    display_asset(
-                        portfolio.get("quaternary_asset"),
-                        portfolio.get("quaternary_asset_percentage"),
-                        portfolio.get("quaternary_asset_justification"),
-                    )
-                if portfolio.get("quinary_asset"):
-                    display_asset(
-                        portfolio.get("quinary_asset"),
-                        portfolio.get("quinary_asset_percentage"),
-                        portfolio.get("quinary_asset_justification"),
-                    )
+                # Display all assets from the portfolio (new structure with nested assets)
+                if "assets" in portfolio and isinstance(portfolio["assets"], list):
+                    for asset in portfolio["assets"]:
+                        display_asset(
+                            asset.get("symbol")
+                            if isinstance(asset, dict)
+                            else asset.symbol,
+                            asset.get("percentage")
+                            if isinstance(asset, dict)
+                            else asset.percentage,
+                            asset.get("justification")
+                            if isinstance(asset, dict)
+                            else asset.justification,
+                        )
 
                 # Display overall strategy reasoning
                 if "portfolio_reasoning" in portfolio:
@@ -672,7 +658,14 @@ def main():
 
                 # Display risk level
                 if "risk_level" in portfolio:
-                    risk_level = portfolio["risk_level"].upper()
+                    # Extract the value from the risk_level (could be enum or string)
+                    risk_value = portfolio["risk_level"]
+                    if isinstance(risk_value, str):
+                        risk_level = risk_value.upper()
+                    else:
+                        # Handle enum or other types
+                        risk_level = str(risk_value).replace("RiskLevel.", "").upper()
+
                     if risk_level == "CONSERVATIVE":
                         st.success(f"**Risk Level**: 🛡️ {risk_level}")
                     elif risk_level == "MODERATE":
@@ -692,12 +685,18 @@ def main():
                     and portfolio["key_considerations"]
                 ):
                     st.markdown("### 📋 Key Considerations")
-                    # Split by semicolon since key_considerations is now a string
-                    considerations = portfolio["key_considerations"].split(";")
-                    for consideration in considerations:
-                        consideration = consideration.strip()
-                        if consideration:
-                            st.write(f"• {consideration}")
+                    # Handle list of considerations
+                    if isinstance(portfolio["key_considerations"], list):
+                        for consideration in portfolio["key_considerations"]:
+                            if consideration:
+                                st.write(f"• {consideration}")
+                    else:
+                        # Fallback for string format (old structure)
+                        considerations = portfolio["key_considerations"].split(";")
+                        for consideration in considerations:
+                            consideration = consideration.strip()
+                            if consideration:
+                                st.write(f"• {consideration}")
 
                 logger.info("Portfolio display completed")
 

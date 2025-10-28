@@ -741,8 +741,8 @@ Please extract all available financial information and structure it according to
                 logger.info("Portfolio generated successfully with RAG context")
                 logger.info("Risk level: %s", portfolio.risk_level)
 
-                # Convert Portfolio object to dictionary
-                portfolio_dict = portfolio.model_dump()
+                # Convert Portfolio object to dictionary with proper enum serialization
+                portfolio_dict = portfolio.model_dump(mode="json")
                 logger.debug(
                     "Returning portfolio dictionary with keys: %s",
                     list(portfolio_dict.keys()),
