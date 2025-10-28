@@ -221,7 +221,7 @@ def generate_portfolio_for_profile(agent, profile):
 
     try:
         # Convert FinancialProfile object to dict for agent
-        profile_dict = profile.dict()
+        profile_dict = profile.model_dump()
 
         logger.debug("Converting profile to dict for portfolio generation")
 
@@ -543,7 +543,7 @@ def main():
             st.subheader("📊 Financial Profile Summary")
 
             # Convert profile to dictionary for display
-            profile_dict = st.session_state.financial_profile.dict()
+            profile_dict = st.session_state.financial_profile.model_dump()
 
             # Create DataFrame for table (excluding summary_notes)
             table_data = {}
