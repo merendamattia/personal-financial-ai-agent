@@ -132,8 +132,6 @@ class TestRAGAssetRetrieverRetrieval:
         retriever._documents = sample_rag_documents
 
         # Create mock embeddings (3 documents, 384-dim)
-        import numpy as np
-
         retriever._embeddings = np.random.randn(3, 384)
 
         # Patch the embedder
@@ -152,8 +150,6 @@ class TestRAGAssetRetrieverRetrieval:
         """Test that retrieval respects k limit."""
         retriever = RAGAssetRetriever()
         retriever._documents = sample_rag_documents
-
-        import numpy as np
 
         retriever._embeddings = np.random.randn(3, 384)
 
