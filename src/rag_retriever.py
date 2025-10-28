@@ -193,7 +193,7 @@ class RAGAssetRetriever:
         logger.info("Index built and cached successfully")
         return docs, embs
 
-    def retrieve(self, query: str, k: int = 5) -> List[Dict]:
+    def retrieve(self, query: str, k: int = 15) -> List[Dict]:
         """Retrieve k most similar documents via semantic search.
 
         Encodes the query and finds the k documents with highest

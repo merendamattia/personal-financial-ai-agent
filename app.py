@@ -206,6 +206,48 @@ def stream_text(text: str, chunk_size: int = 20):
         time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
+def generate_portfolio_for_profile(agent, profile):
+    """
+    Generate a balanced portfolio for the given financial profile.
+
+    Args:
+        agent: The ChatBotAgent instance
+        profile: The FinancialProfile object
+
+    Returns:
+        The generated portfolio dictionary, or None if generation failed
+    """
+    logger.info("Starting portfolio generation for profile")
+
+    try:
+        # Convert FinancialProfile object to dict for agent
+        profile_dict = profile.dict()
+
+        logger.debug("Converting profile to dict for portfolio generation")
+
+        # Generate portfolio using RAG-enhanced agent with structured response
+        portfolio = agent.generate_balanced_portfolio(profile_dict)
+
+        logger.info("Portfolio generated successfully")
+        if portfolio:
+            primary = portfolio.get("primary_asset")
+            risk = portfolio.get("risk_level")
+            logger.debug(
+                "Portfolio structure: primary_asset=%s, risk_level=%s", primary, risk
+            )
+
+        return portfolio
+
+    except Exception as portfolio_error:
+        logger.error(
+            "Failed to generate portfolio: %s",
+            str(portfolio_error),
+            exc_info=True,
+        )
+        st.error(f"❌ Failed to generate portfolio: {str(portfolio_error)}")
+        return None
+
+
 def main():
     """Main Streamlit application."""
     logger.debug("Starting main Streamlit application")
@@ -422,9 +464,18 @@ def main():
         # Test with demo profile button
         if st.button("🧪 Load Test Profile", use_container_width=True):
             logger.info("Loading test financial profile")
-            st.session_state.financial_profile = get_test_financial_profile()
+            test_profile = get_test_financial_profile()
+            st.session_state.financial_profile = test_profile
             st.session_state.conversation_completed = True
-            st.success("✅ Test profile loaded! Scroll down to see charts.")
+
+            # Generate portfolio automatically
+            logger.info("Auto-generating portfolio for test profile")
+            portfolio = generate_portfolio_for_profile(agent, test_profile)
+            if portfolio:
+                st.session_state.generated_portfolio = portfolio
+                logger.info("Portfolio auto-generated successfully")
+
+            st.success("✅ Test profile loaded with auto-generated portfolio!")
             st.rerun()
 
         # Model info
@@ -537,38 +588,40 @@ def main():
             st.subheader("💼 AI-Generated Portfolio Recommendation")
 
             logger.debug("Preparing portfolio generation")
+            logger.debug(
+                "Generated portfolio state: %s", st.session_state.generated_portfolio
+            )
 
-            # Create portfolio generation button
-            if st.button("Generate Portfolio with RAG", key="generate_portfolio"):
-                logger.info("Portfolio generation requested")
-
+            # Auto-generate portfolio if not already generated
+            if not st.session_state.generated_portfolio:
+                logger.info("Portfolio not yet generated, auto-generating...")
                 with st.spinner(
                     "🔄 Analyzing profile and retrieving relevant ETF assets..."
                 ):
-                    try:
-                        # Convert FinancialProfile object to dict for agent
-                        profile_dict = st.session_state.financial_profile.dict()
-
-                        logger.debug(
-                            "Converting profile to dict for portfolio generation"
-                        )
-
-                        # Generate portfolio using RAG-enhanced agent
-                        portfolio = agent.generate_balanced_portfolio(profile_dict)
-
-                        logger.info("Portfolio generated successfully")
+                    portfolio = generate_portfolio_for_profile(
+                        agent, st.session_state.financial_profile
+                    )
+                    if portfolio:
                         st.session_state.generated_portfolio = portfolio
-
-                    except Exception as portfolio_error:
-                        logger.error(
-                            "Failed to generate portfolio: %s",
-                            str(portfolio_error),
-                            exc_info=True,
-                        )
+                        logger.info("Portfolio auto-generated successfully")
+                        st.rerun()
+                    else:
+                        logger.warning("Failed to generate portfolio")
                         st.error(
-                            f"❌ Failed to generate portfolio: {str(portfolio_error)}"
+                            "❌ Could not auto-generate portfolio. Try clicking the button below."
                         )
-                        st.session_state.generated_portfolio = None
+                        if st.button(
+                            "Generate Portfolio with RAG", key="generate_portfolio"
+                        ):
+                            logger.info("Portfolio generation requested manually")
+                            portfolio = generate_portfolio_for_profile(
+                                agent, st.session_state.financial_profile
+                            )
+                            if portfolio:
+                                st.session_state.generated_portfolio = portfolio
+                                st.rerun()
+            else:
+                logger.debug("Portfolio already generated, displaying...")
 
             # Display generated portfolio if available
             if (
@@ -580,25 +633,47 @@ def main():
                 logger.debug("Displaying generated portfolio")
 
                 # Display portfolio allocation
-                if "portfolio_allocation" in portfolio:
-                    st.markdown("### 📈 Portfolio Allocation")
+                st.markdown("### 📈 Portfolio Allocation")
 
-                    allocation = portfolio["portfolio_allocation"]
+                # Helper function to display asset
+                def display_asset(asset_name, percentage, justification):
+                    if asset_name and percentage:
+                        col1, col2 = st.columns([1, 3])
+                        with col1:
+                            st.metric(asset_name, f"{percentage}%")
+                        with col2:
+                            st.caption(justification if justification else "")
 
-                    # Display allocation as columns with justifications
-                    for asset, asset_data in allocation.items():
-                        if isinstance(asset_data, dict) and "percentage" in asset_data:
-                            percentage = asset_data["percentage"]
-                            justification = asset_data.get("justification", "")
-
-                            col1, col2 = st.columns([1, 3])
-                            with col1:
-                                st.metric(asset, f"{percentage}%")
-                            with col2:
-                                st.caption(justification)
-                        else:
-                            # Backward compatibility if asset_data is just a number
-                            st.metric(asset, f"{asset_data}%")
+                # Display all assets
+                display_asset(
+                    portfolio.get("primary_asset"),
+                    portfolio.get("primary_asset_percentage"),
+                    portfolio.get("primary_asset_justification"),
+                )
+                if portfolio.get("secondary_asset"):
+                    display_asset(
+                        portfolio.get("secondary_asset"),
+                        portfolio.get("secondary_asset_percentage"),
+                        portfolio.get("secondary_asset_justification"),
+                    )
+                if portfolio.get("tertiary_asset"):
+                    display_asset(
+                        portfolio.get("tertiary_asset"),
+                        portfolio.get("tertiary_asset_percentage"),
+                        portfolio.get("tertiary_asset_justification"),
+                    )
+                if portfolio.get("quaternary_asset"):
+                    display_asset(
+                        portfolio.get("quaternary_asset"),
+                        portfolio.get("quaternary_asset_percentage"),
+                        portfolio.get("quaternary_asset_justification"),
+                    )
+                if portfolio.get("quinary_asset"):
+                    display_asset(
+                        portfolio.get("quinary_asset"),
+                        portfolio.get("quinary_asset_percentage"),
+                        portfolio.get("quinary_asset_justification"),
+                    )
 
                 # Display overall strategy reasoning
                 if "portfolio_reasoning" in portfolio:
@@ -622,10 +697,17 @@ def main():
                     )
 
                 # Display key considerations
-                if "key_considerations" in portfolio:
+                if (
+                    "key_considerations" in portfolio
+                    and portfolio["key_considerations"]
+                ):
                     st.markdown("### 📋 Key Considerations")
-                    for consideration in portfolio["key_considerations"]:
-                        st.write(f"• {consideration}")
+                    # Split by semicolon since key_considerations is now a string
+                    considerations = portfolio["key_considerations"].split(";")
+                    for consideration in considerations:
+                        consideration = consideration.strip()
+                        if consideration:
+                            st.write(f"• {consideration}")
 
                 logger.info("Portfolio display completed")
 
