@@ -115,50 +115,38 @@ def get_available_providers() -> list:
     return available
 
 
-def get_test_financial_profile() -> FinancialProfile:
+def load_profile_from_json(uploaded_file) -> FinancialProfile:
     """
-    Create a test/demo financial profile for testing charts and displays.
+    Load a financial profile from an uploaded JSON file.
+
+    Args:
+        uploaded_file: Streamlit uploaded file object
 
     Returns:
-        A sample FinancialProfile with realistic Italian financial data
+        FinancialProfile object if valid, None otherwise
     """
-    logger.debug("Creating test financial profile")
+    try:
+        import json
 
-    profile = FinancialProfile(
-        # Personal Information
-        age_range="35-44",
-        employment_status="employed",
-        occupation="Software Engineer",
-        # Income Information
-        annual_income_range="50000-70000€",
-        income_stability="stable",
-        additional_income_sources="Freelance projects, ~5000€/year",
-        # Expenses and Debts
-        monthly_expenses_range="2500-3000€",
-        major_expenses="Mortgage (1200€), Car payment (300€), Utilities (200€)",
-        total_debt="30000-50000€",
-        debt_types="Mortgage (primary), Car loan (secondary)",
-        # Savings and Investments
-        savings_amount="45000-55000€",
-        emergency_fund_months="6",
-        investments="ETF (60%), Azioni italiane (30%), Criptovalute (10%)",
-        investment_experience="intermediate",
-        # Goals
-        primary_goals="Accumulare ricchezza per la pensione, Estinguere il mutuo",
-        short_term_goals="Costruire un fondo di emergenza più solido, Aumentare investimenti mensili",
-        long_term_goals="Raggiungere l'indipendenza finanziaria entro i 55 anni",
-        # Risk Profile
-        risk_tolerance="moderate",
-        risk_concerns="Market volatility, Economic recession, Loss of income",
-        # Knowledge and Other
-        financial_knowledge_level="intermediate",
-        family_dependents="2 children",
-        insurance_coverage="Life insurance (50000€), Home insurance, Car insurance",
-        summary_notes="Solid financial foundation with room for growth. Good income stability and emergency fund coverage.",
-    )
+        logger.debug("Loading financial profile from JSON file: %s", uploaded_file.name)
 
-    logger.debug("Test financial profile created successfully")
-    return profile
+        # Read the file content
+        file_content = uploaded_file.read().decode("utf-8")
+        data = json.loads(file_content)
+
+        # Validate and create FinancialProfile
+        profile = FinancialProfile(**data)
+
+        logger.info("Financial profile loaded successfully from JSON")
+        return profile
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON format: %s", str(e))
+        st.error(f"❌ Invalid JSON format: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error("Failed to load profile from JSON: %s", str(e))
+        st.error(f"❌ Failed to load profile: {str(e)}")
+        return None
 
 
 @st.cache_resource
@@ -272,9 +260,9 @@ def main():
     if "financial_profile" not in st.session_state:
         st.session_state.financial_profile = None
         logger.debug("Initialized financial_profile session state to None")
-    if "generated_portfolio" not in st.session_state:
-        st.session_state.generated_portfolio = None
-        logger.debug("Initialized generated_portfolio session state to None")
+    if "profile_loaded_from_json" not in st.session_state:
+        st.session_state.profile_loaded_from_json = False
+        logger.debug("Initialized profile_loaded_from_json session state to False")
     if "health_check_done" not in st.session_state:
         st.session_state.health_check_done = False
         logger.debug("Initialized health_check_done session state to False")
@@ -446,6 +434,7 @@ def main():
             st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
+            st.session_state.profile_loaded_from_json = False
             st.rerun()
 
         # Clear history button
@@ -460,24 +449,32 @@ def main():
             st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
+            st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
 
-        # Test with demo profile button
-        if st.button("🧪 Load Test Profile", use_container_width=True):
-            logger.info("Loading test financial profile")
-            test_profile = get_test_financial_profile()
-            st.session_state.financial_profile = test_profile
-            st.session_state.conversation_completed = True
+        # Upload custom profile from JSON
+        st.divider()
+        st.subheader("📤 Load Custom Profile")
+        uploaded_json = st.file_uploader(
+            "Upload a financial profile JSON file",
+            type=["json"],
+            help="Upload a JSON file with your financial profile data",
+        )
 
-            # Generate portfolio automatically
-            logger.info("Auto-generating portfolio for test profile")
-            portfolio = generate_portfolio_for_profile(agent, test_profile)
-            if portfolio:
-                st.session_state.generated_portfolio = portfolio
-                logger.info("Portfolio auto-generated successfully")
+        if uploaded_json is not None and not st.session_state.profile_loaded_from_json:
+            logger.debug("JSON file uploaded: %s", uploaded_json.name)
+            profile = load_profile_from_json(uploaded_json)
 
-            st.success("✅ Test profile loaded with auto-generated portfolio!")
-            st.rerun()
+            if profile:
+                st.session_state.financial_profile = profile
+                st.session_state.conversation_completed = True
+                st.session_state.generated_portfolio = None
+                st.session_state.profile_loaded_from_json = True
+                logger.info(
+                    "Profile loaded successfully, auto-generation will happen in display section"
+                )
+                st.success("✅ Profile loaded successfully!")
+                st.rerun()
 
         # Model info
         st.divider()
@@ -505,7 +502,7 @@ def main():
         try:
             # Get the first question (without advancing yet - we're at index 0)
             first_question = agent.get_current_question()
-            logger.debug("First question: %s", first_question[:200])
+            logger.debug("First question: %s", first_question)
 
             # Format the welcome prompt template
             welcome_prompt = agent.welcome_prompt.format(first_question=first_question)
