@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 from src.clients import list_providers
 from src.core import ChatBotAgent
 from src.models import FinancialProfile
-from src.visualization import display_financial_charts
 
 # Configure logging
 logging.basicConfig(
@@ -573,15 +572,6 @@ def main():
                 mime="application/json",
                 key="download_profile",
             )
-
-            # # Display financial charts
-            # logger.debug("Preparing to display financial charts")
-            # try:
-            #     display_financial_charts(st.session_state.financial_profile)
-            #     logger.info("Financial charts displayed successfully")
-            # except Exception as charts_error:
-            #     logger.warning("Failed to display charts: %s", str(charts_error))
-            #     st.warning("Could not generate charts at this time")
 
             # Generate balanced portfolio based on profile
             st.divider()
