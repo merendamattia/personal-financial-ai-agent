@@ -24,7 +24,7 @@ Generate a well-balanced, customized investment portfolio that:
 5. Aggressive portfolios: Consider Bitcoin (5-15%) for growth diversification (write only BITCOIN, do not use any other assets name)
 6. Each asset must have explicit justification based on the client's profile
 7. Geographic allocation from profile: Respect client's stated geographic preferences (e.g., "70% USA, 30% International")
-8. Global balanced allocation: If client specifies "global balanced" or similar (e.g., "Global balanced", "World diversified", "Global mix"), use MSCI World ETF (SWDA) as the primary and only equity holding to simplify the portfolio
+8. Global balanced allocation: If client specifies "global balanced" or similar (e.g., "Global balanced", "World diversified", "Global mix"), use MSCI World ETF (SWDA) as the primary and only equity holding and UltraShort Bond (EUES) for bond to simplify the portfolio
 9. Geographic reasoning: Include in justification why specific geographic regions were chosen based on client profile
 
 ## Critical Requirements:
