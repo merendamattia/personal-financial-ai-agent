@@ -15,9 +15,9 @@ from datapizza.agents import Agent
 from datapizza.memory import Memory
 from datapizza.type import ROLE, TextBlock
 
-from .clients import get_client, list_providers
-from .models import FinancialProfile, Portfolio
-from .rag_retriever import RAGAssetRetriever
+from ..clients import get_client, list_providers
+from ..models import FinancialProfile, Portfolio
+from ..retrieval import RAGAssetRetriever
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -144,7 +144,7 @@ class ChatBotAgent:
         # If not found, try from the package directory
         if not prompt_path.exists():
             # Try relative to this file
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             prompt_path = current_dir / "prompts" / "system_prompt.md"
             logger.debug(
                 "Prompt file not found in current dir, trying: %s", prompt_path
@@ -183,7 +183,7 @@ class ChatBotAgent:
         # If not found, try from the package directory
         if not questions_path.exists():
             # Try relative to this file
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             questions_path = current_dir / "prompts" / "questions.json"
             logger.debug(
                 "Questions file not found in current dir, trying: %s", questions_path
@@ -240,7 +240,7 @@ class ChatBotAgent:
 
         # If not found, try from the package directory
         if not template_path.exists():
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             template_path = current_dir / "prompts" / f"{template_name}.md"
             logger.debug(
                 "Prompt template not found in current dir, trying: %s", template_path
@@ -703,7 +703,6 @@ Please extract all available financial information and structure it according to
                 try:
                     retrieved_assets = self._rag_retriever.retrieve(query, k=15)
                     logger.info("Retrieved %d asset documents", len(retrieved_assets))
-                    logger.debug("Retrieved asset documents: %s", retrieved_assets)
 
                     # Format asset context
                     asset_texts = []
@@ -715,7 +714,6 @@ Please extract all available financial information and structure it according to
                     logger.debug(
                         "Asset context prepared, length: %d", len(asset_context)
                     )
-                    logger.debug("Asset context: %s", asset_context)
                 except Exception as e:
                     logger.warning("RAG retrieval failed: %s", str(e))
             else:
@@ -728,7 +726,6 @@ Please extract all available financial information and structure it according to
 
             logger.debug("Sending structured portfolio generation request to LLM")
             logger.debug("Prompt length: %d characters", len(extraction_prompt))
-            logger.debug("Prompt content: %s", extraction_prompt)
 
             # Use structured_response to get Portfolio object directly
             response = self._client.structured_response(
@@ -737,13 +734,11 @@ Please extract all available financial information and structure it according to
             )
 
             logger.debug("Structured response received")
-            logger.debug("Response content: %s", response)
 
             # Extract the portfolio from the response
             if hasattr(response, "structured_data") and response.structured_data:
                 portfolio = response.structured_data[0]
                 logger.info("Portfolio generated successfully with RAG context")
-                logger.debug("Portfolio details: %s", portfolio)
                 logger.info("Risk level: %s", portfolio.risk_level)
 
                 # Convert Portfolio object to dictionary

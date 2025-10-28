@@ -14,10 +14,10 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.charts import display_financial_charts
-from src.chatbot_agent import ChatBotAgent
 from src.clients import list_providers
+from src.core import ChatBotAgent
 from src.models import FinancialProfile
+from src.visualization import display_financial_charts
 
 # Configure logging
 logging.basicConfig(
