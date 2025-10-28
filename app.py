@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from src.charts import display_financial_charts
 from src.chatbot_agent import ChatBotAgent
 from src.clients import list_providers
-from src.financial_profile import FinancialProfile
+from src.models import FinancialProfile
 
 # Configure logging
 logging.basicConfig(

@@ -13,7 +13,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from .financial_profile import FinancialProfile
+from .models import FinancialProfile
 
 # Configure logger
 logger = logging.getLogger(__name__)

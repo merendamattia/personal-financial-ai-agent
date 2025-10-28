@@ -16,6 +16,7 @@ from datapizza.memory import Memory
 from datapizza.type import ROLE, TextBlock
 
 from .clients import get_client, list_providers
+from .models import FinancialProfile, Portfolio
 from .rag_retriever import RAGAssetRetriever
 
 # Configure logger
@@ -604,8 +605,6 @@ class ChatBotAgent:
         logger.debug("Extracting financial profile from summary")
 
         try:
-            from .financial_profile import FinancialProfile
-
             # Create the extraction prompt
             extraction_prompt = f"""Extract the financial profile information from the following conversation summary.
 If any information is not mentioned or unclear, use reasonable default values based on context clues.
@@ -671,8 +670,6 @@ Please extract all available financial information and structure it according to
         logger.debug("Profile keys: %s", list(financial_profile.keys()))
 
         try:
-            from .portfolio import Portfolio
-
             # Format profile as JSON
             profile_json = json.dumps(financial_profile, indent=2)
 
