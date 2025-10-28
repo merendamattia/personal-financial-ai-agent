@@ -115,7 +115,7 @@ class FinancialProfile(BaseModel):
         """Pydantic config."""
 
         json_schema_extra = {
-            "example": {
+            "financial_profile": {
                 "age_range": "30-39",
                 "employment_status": "employed",
                 "occupation": "Software Engineer",

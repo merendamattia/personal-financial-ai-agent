@@ -9,13 +9,15 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 from datapizza.agents import Agent
 from datapizza.memory import Memory
 from datapizza.type import ROLE, TextBlock
 
-from .clients import get_client, list_providers
+from ..clients import get_client, list_providers
+from ..models import FinancialProfile, Portfolio
+from ..retrieval import RAGAssetRetriever
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -95,6 +97,10 @@ class ChatBotAgent:
             "acknowledge_and_ask"
         )
         self.summary_prompt = self._load_prompt_template("summary")
+        self.rag_query_builder_prompt = self._load_prompt_template("rag_query_builder")
+        self.portfolio_extraction_prompt = self._load_prompt_template(
+            "portfolio_extraction"
+        )
         logger.debug("Prompt templates loaded successfully")
 
         # Initialize question tracking
@@ -109,6 +115,16 @@ class ChatBotAgent:
         logger.debug("Creating agent with name: %s", self.name)
         self._agent = self._create_agent()
         logger.info("ChatBotAgent initialized successfully")
+
+        # Initialize RAG retriever for asset data
+        logger.debug("Initializing RAG asset retriever")
+        self._rag_retriever = RAGAssetRetriever()
+        try:
+            self._rag_retriever.build_or_load_index()
+            logger.info("RAG asset retriever initialized successfully")
+        except Exception as e:
+            logger.warning("Failed to initialize RAG retriever: %s", str(e))
+            self._rag_retriever = None
 
     def _load_system_prompt(self) -> str:
         """
@@ -128,7 +144,7 @@ class ChatBotAgent:
         # If not found, try from the package directory
         if not prompt_path.exists():
             # Try relative to this file
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             prompt_path = current_dir / "prompts" / "system_prompt.md"
             logger.debug(
                 "Prompt file not found in current dir, trying: %s", prompt_path
@@ -167,7 +183,7 @@ class ChatBotAgent:
         # If not found, try from the package directory
         if not questions_path.exists():
             # Try relative to this file
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             questions_path = current_dir / "prompts" / "questions.json"
             logger.debug(
                 "Questions file not found in current dir, trying: %s", questions_path
@@ -224,7 +240,7 @@ class ChatBotAgent:
 
         # If not found, try from the package directory
         if not template_path.exists():
-            current_dir = Path(__file__).parent.parent
+            current_dir = Path(__file__).parent.parent.parent
             template_path = current_dir / "prompts" / f"{template_name}.md"
             logger.debug(
                 "Prompt template not found in current dir, trying: %s", template_path
@@ -589,8 +605,6 @@ class ChatBotAgent:
         logger.debug("Extracting financial profile from summary")
 
         try:
-            from .financial_profile import FinancialProfile
-
             # Create the extraction prompt
             extraction_prompt = f"""Extract the financial profile information from the following conversation summary.
 If any information is not mentioned or unclear, use reasonable default values based on context clues.
@@ -624,3 +638,123 @@ Please extract all available financial information and structure it according to
                 "Failed to extract financial profile: %s", str(e), exc_info=True
             )
             raise RuntimeError(f"Failed to extract financial profile: {e}") from e
+
+    def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
+        """
+        Generate a balanced investment portfolio based on the financial profile.
+
+        Uses RAG to retrieve relevant asset information from ETF PDFs, then generates
+        a customized portfolio allocation using the LLM with both the financial profile
+        and asset data as context. Returns a structured Portfolio object.
+
+        The method:
+        1. Uses RAG retriever to fetch relevant ETF/asset data based on profile
+        2. Augments the prompt with financial profile AND retrieved asset context
+        3. LLM generates structured portfolio with real asset recommendations
+
+        Args:
+            financial_profile: Dictionary with financial profile information
+
+        Returns:
+            dict: Portfolio recommendation as dictionary with structured data
+
+        Raises:
+            ValueError: If financial_profile is None or empty
+            RuntimeError: If LLM fails or RAG retriever unavailable
+        """
+        if not financial_profile:
+            logger.error("Financial profile cannot be None or empty")
+            raise ValueError("Financial profile cannot be None or empty")
+
+        logger.info("Generating balanced portfolio with RAG context")
+        logger.debug("Profile keys: %s", list(financial_profile.keys()))
+
+        try:
+            # Format profile as JSON
+            profile_json = json.dumps(financial_profile, indent=2)
+
+            # Use RAG to retrieve relevant asset information
+            asset_context = ""
+            if self._rag_retriever:
+                logger.debug("Retrieving asset information via RAG")
+
+                # Extract key characteristics to find relevant assets
+                risk_tolerance = financial_profile.get("risk_tolerance", "")
+                investment_experience = financial_profile.get(
+                    "investment_experience", ""
+                )
+                goals = financial_profile.get("financial_goals", "")
+                time_horizon = financial_profile.get("investment_time_horizon", "")
+                geographic_allocation = financial_profile.get(
+                    "geographic_allocation", ""
+                )
+
+                # Build a semantic query using the template
+                query = self.rag_query_builder_prompt.format(
+                    risk_tolerance=risk_tolerance,
+                    investment_experience=investment_experience,
+                    time_horizon=time_horizon,
+                    financial_goals=goals,
+                    geographic_allocation=geographic_allocation,
+                )
+
+                logger.debug("RAG query: %s", query)
+
+                try:
+                    retrieved_assets = self._rag_retriever.retrieve(query, k=15)
+                    logger.info("Retrieved %d asset documents", len(retrieved_assets))
+
+                    # Format asset context
+                    asset_texts = []
+                    for asset in retrieved_assets:
+                        asset_texts.append(
+                            f"[Asset: {asset['id']} (relevance: {asset['score']:.2f})]\n{asset['text'][:300]}..."
+                        )
+                    asset_context = "\n---\n".join(asset_texts)
+                    logger.debug(
+                        "Asset context prepared, length: %d", len(asset_context)
+                    )
+                except Exception as e:
+                    logger.warning("RAG retrieval failed: %s", str(e))
+            else:
+                logger.warning("RAG retriever not available")
+
+            # Create extraction prompt for portfolio generation using template
+            extraction_prompt = self.portfolio_extraction_prompt.format(
+                client_profile=profile_json, asset_context=asset_context
+            )
+
+            logger.debug("Sending structured portfolio generation request to LLM")
+            logger.debug("Prompt length: %d characters", len(extraction_prompt))
+
+            # Use structured_response to get Portfolio object directly
+            response = self._client.structured_response(
+                input=extraction_prompt,
+                output_cls=Portfolio,
+            )
+
+            logger.debug("Structured response received")
+
+            # Extract the portfolio from the response
+            if hasattr(response, "structured_data") and response.structured_data:
+                portfolio = response.structured_data[0]
+                logger.info("Portfolio generated successfully with RAG context")
+                logger.info("Risk level: %s", portfolio.risk_level)
+
+                # Convert Portfolio object to dictionary with proper enum serialization
+                portfolio_dict = portfolio.model_dump(mode="json")
+                logger.debug(
+                    "Returning portfolio dictionary with keys: %s",
+                    list(portfolio_dict.keys()),
+                )
+
+                return portfolio_dict
+            else:
+                logger.error("No structured data in response")
+                raise ValueError(
+                    "No structured data returned from portfolio generation"
+                )
+
+        except Exception as e:
+            logger.error("Failed to generate portfolio: %s", str(e), exc_info=True)
+            raise RuntimeError(f"Failed to generate portfolio: {e}") from e

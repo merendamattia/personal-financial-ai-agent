@@ -32,6 +32,12 @@ cp .env.example .env
 
 Edit `.env` to set required API keys and/or configure Ollama.
 
+4. Unzip the dataset:
+```bash
+cd dataset
+unzip ETFs.zip
+```
+
 ## Usage
 
 ```bash
@@ -95,3 +101,9 @@ The app automatically detects which providers are available based on your `.env`
 ## Contributing
 
 Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines, including how to set up pre-commit hooks and follow our commit conventions.
+
+## Tests
+You can run tests with:
+```bash
+pytest -q
+```
