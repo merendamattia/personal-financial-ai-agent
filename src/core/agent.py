@@ -679,14 +679,14 @@ Please extract all available financial information and structure it according to
                 logger.debug("Retrieving asset information via RAG")
 
                 # Extract key characteristics to find relevant assets
-                risk_tolerance = financial_profile.get("risk_tolerance", "")
+                risk_tolerance = financial_profile.get("risk_tolerance", "Conservative")
                 investment_experience = financial_profile.get(
-                    "investment_experience", ""
+                    "investment_experience", "Beginner"
                 )
-                goals = financial_profile.get("financial_goals", "")
-                time_horizon = financial_profile.get("investment_time_horizon", "")
+                goals = financial_profile.get("primary_goals", "Savings")
+                time_horizon = financial_profile.get("long_term_goals", "None")
                 geographic_allocation = financial_profile.get(
-                    "geographic_allocation", ""
+                    "geographic_allocation", "Global balanced"
                 )
 
                 # Build a semantic query using the template

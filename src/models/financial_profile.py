@@ -15,82 +15,92 @@ class FinancialProfile(BaseModel):
 
     # Personal Information
     age_range: str = Field(
-        description="Age range of the user (e.g., '25-34', '35-44', etc.)"
+        default="None",
+        description="Age range of the user (e.g., '25-34', '35-44', etc.)",
     )
     employment_status: str = Field(
-        description="Employment status (e.g., 'employed', 'self-employed', 'retired', etc.)"
+        default="None",
+        description="Employment status (e.g., 'employed', 'self-employed', 'retired', etc.)",
     )
     occupation: Optional[str] = Field(
-        default=None, description="Current occupation or industry"
+        default="None", description="Current occupation or industry"
     )
 
     # Income Information
     annual_income_range: str = Field(
-        description="Annual income range (e.g., '30k-50k', '50k-100k', '100k+', etc.)"
+        default="None",
+        description="Annual income range (e.g., '30k-50k', '50k-100k', '100k+', etc.)",
     )
     income_stability: str = Field(
-        description="Income stability rating (e.g., 'stable', 'moderate', 'unstable')"
+        default="None",
+        description="Income stability rating (e.g., 'stable', 'moderate', 'unstable')",
     )
     additional_income_sources: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Any additional income sources (investments, side business, etc.)",
     )
 
     # Expenses and Debts
     monthly_expenses_range: str = Field(
-        description="Estimated monthly expenses range (e.g., '2k-3k', '3k-5k', etc.)"
+        default="None",
+        description="Estimated monthly expenses range (e.g., '2k-3k', '3k-5k', etc.)",
     )
     major_expenses: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Major recurring expenses (mortgage, rent, car payment, etc.)",
     )
     total_debt: str = Field(
-        description="Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k', etc.)"
+        default="None",
+        description="Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k', etc.)",
     )
     debt_types: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Types of debt (mortgage, credit card, student loans, etc.)",
     )
 
     # Assets and Savings
     savings_amount: str = Field(
-        description="Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+', etc.)"
+        default="None",
+        description="Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+', etc.)",
     )
     emergency_fund_months: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Number of months of expenses covered by emergency fund (e.g., '1', '3', '6', etc.)",
     )
     investments: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Investment portfolio details (stocks, ETFs, crypto, etc.)",
     )
     investment_experience: str = Field(
-        description="Investment experience level (beginner, intermediate, advanced)"
+        default="Beginner",
+        description="Investment experience level (beginner, intermediate, advanced)",
     )
 
     # Financial Goals
     primary_goals: Optional[str] = Field(
-        default=None,
+        default="Savings",
         description="Primary financial goals (e.g., 'retirement planning', 'home purchase', 'wealth building', etc.)",
     )
     short_term_goals: Optional[str] = Field(
-        default=None, description="Short-term goals (next 1-2 years)"
+        default="Savings", description="Short-term goals (next 1-2 years)"
     )
     long_term_goals: Optional[str] = Field(
-        default=None, description="Long-term goals (5+ years)"
+        default="Savings", description="Long-term goals (5+ years)"
     )
 
     # Risk Profile
     risk_tolerance: str = Field(
-        description="Risk tolerance level (conservative, moderate, aggressive)"
+        default="Conservative",
+        description="Risk tolerance level (conservative, moderate, aggressive)",
     )
     risk_concerns: Optional[str] = Field(
-        default=None, description="Any specific financial concerns or risks"
+        default="None", description="Any specific financial concerns or risks"
     )
 
     # Financial Knowledge
     financial_knowledge_level: str = Field(
-        description="Financial knowledge level (beginner, intermediate, advanced)"
+        default="Beginner",
+        description="Financial knowledge level (beginner, intermediate, advanced)",
     )
 
     # Investment Geography
@@ -101,14 +111,14 @@ class FinancialProfile(BaseModel):
 
     # Other Information
     family_dependents: Optional[str] = Field(
-        default=None, description="Number of dependents or family situation"
+        default="None", description="Number of dependents or family situation"
     )
     insurance_coverage: Optional[str] = Field(
-        default=None,
+        default="None",
         description="Types of insurance coverage (health, life, property, etc.)",
     )
     summary_notes: Optional[str] = Field(
-        default=None, description="Any additional important notes or observations"
+        default="None", description="Any additional important notes or observations"
     )
 
     class Config:
