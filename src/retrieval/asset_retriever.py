@@ -201,7 +201,7 @@ class RAGAssetRetriever:
 
         Args:
             query: Search query text
-            k: Number of results to return (default: 5)
+            k: Number of results to return (default: 15)
 
         Returns:
             List of k most similar documents with scores
