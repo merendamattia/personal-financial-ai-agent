@@ -2,13 +2,8 @@
 
 import json
 import sys
-from pathlib import Path
-
-# Add parent directory to path to import src modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core import ChatBotAgent
-from src.retrieval import RAGAssetRetriever
 
 
 def create_test_profile() -> dict:
