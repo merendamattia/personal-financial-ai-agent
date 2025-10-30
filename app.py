@@ -8,6 +8,7 @@ AI agent powered by datapizza-ai and multiple LLM providers.
 import logging
 import os
 import time
+from typing import Optional
 
 import pandas as pd
 import requests
@@ -15,7 +16,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.clients import list_providers
-from src.core import ChatBotAgent
+from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
 
 # Configure logging
@@ -141,34 +142,70 @@ def load_profile_from_json(uploaded_file) -> FinancialProfile:
         return profile
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON format: %s", str(e))
-        st.error(f"❌ Invalid JSON format: {str(e)}")
+        st.error(f"Invalid JSON format: {str(e)}")
         return None
     except Exception as e:
         logger.error("Failed to load profile from JSON: %s", str(e))
-        st.error(f"❌ Failed to load profile: {str(e)}")
+        st.error(f"Failed to load profile: {str(e)}")
         return None
 
 
 @st.cache_resource
-def initialize_agent(provider: str) -> ChatBotAgent:
+def initialize_chatbot(provider: str) -> ChatbotAgent:
     """
-    Initialize the financial chatbot agent with the selected provider.
+    Initialize the chatbot agent (pure conversation, no tools).
 
     Args:
         provider: The LLM provider to use
 
     Returns:
-        Initialized ChatBotAgent instance
+        Initialized ChatbotAgent instance
     """
-    logger.debug("Initializing agent with provider: %s", provider)
+    logger.debug("Initializing chatbot agent with provider: %s", provider)
 
     try:
-        agent = ChatBotAgent(provider=provider)
-        logger.info("Agent initialized successfully with provider: %s", provider)
+        # Use a more meaningful agent name
+        agent = ChatbotAgent(name="ChatbotAgent", provider=provider)
+        logger.info(
+            "Chatbot agent initialized successfully with provider: %s", provider
+        )
         return agent
     except Exception as e:
         logger.error(
-            "Failed to initialize agent with provider %s: %s",
+            "Failed to initialize chatbot agent with provider %s: %s",
+            provider,
+            str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@st.cache_resource
+def initialize_financial_advisor(
+    provider: str, name: Optional[str] = None
+) -> FinancialAdvisorAgent:
+    """
+    Initialize the financial advisor agent (with RAG and portfolio generation).
+
+    Args:
+        provider: The LLM provider to use
+
+    Returns:
+        Initialized FinancialAdvisorAgent instance
+    """
+    logger.debug("Initializing financial advisor agent with provider: %s", provider)
+
+    try:
+        agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
+        logger.info(
+            "Financial advisor agent '%s' initialized successfully with provider: %s",
+            agent.name,
+            provider,
+        )
+        return agent
+    except Exception as e:
+        logger.error(
+            "Failed to initialize financial advisor agent with provider %s: %s",
             provider,
             str(e),
             exc_info=True,
@@ -193,16 +230,16 @@ def stream_text(text: str, chunk_size: int = 20):
         time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
-def generate_portfolio_for_profile(agent, profile):
+def generate_portfolio_for_profile(advisor_agent, profile):
     """
     Generate a balanced portfolio for the given financial profile.
 
     Args:
-        agent: The ChatBotAgent instance
+        advisor_agent: The FinancialAdvisorAgent instance
         profile: The FinancialProfile object
 
     Returns:
-        The generated Portfolio object, or None if generation failed
+        The generated Portfolio dict, or None if generation failed
     """
     logger.info("Starting portfolio generation for profile")
 
@@ -212,13 +249,15 @@ def generate_portfolio_for_profile(agent, profile):
 
         logger.debug("Converting profile to dict for portfolio generation")
 
-        # Generate portfolio using RAG-enhanced agent with structured response
-        portfolio = agent.generate_balanced_portfolio(profile_dict)
+        # Generate portfolio using RAG-enhanced advisor agent with structured response
+        portfolio = advisor_agent.generate_balanced_portfolio(profile_dict)
 
         logger.info("Portfolio generated successfully")
         if portfolio:
-            assets_count = len(portfolio.assets) if hasattr(portfolio, "assets") else 0
-            risk = portfolio.risk_level if hasattr(portfolio, "risk_level") else None
+            assets_count = (
+                len(portfolio.get("assets", [])) if isinstance(portfolio, dict) else 0
+            )
+            risk = portfolio.get("risk_level") if isinstance(portfolio, dict) else None
             logger.debug(
                 "Portfolio structure: assets_count=%d, risk_level=%s",
                 assets_count,
@@ -233,7 +272,7 @@ def generate_portfolio_for_profile(agent, profile):
             str(portfolio_error),
             exc_info=True,
         )
-        st.error(f"❌ Failed to generate portfolio: {str(portfolio_error)}")
+        st.error(f"Failed to generate portfolio: {str(portfolio_error)}")
         return None
 
 
@@ -370,15 +409,24 @@ def main():
 
         try:
             logger.debug(
-                "Initializing agent for provider: %s", st.session_state.provider
+                "Initializing chatbot and financial advisor for provider: %s",
+                st.session_state.provider,
             )
-            agent = initialize_agent(st.session_state.provider)
-            logger.info("Agent initialized successfully")
+            # Initialize chatbot agent with a meaningful name
+            chatbot_agent = initialize_chatbot(st.session_state.provider)
+
+            financial_advisor_agent = initialize_financial_advisor(
+                st.session_state.provider
+            )
+            st.session_state["financial_advisor_agent"] = financial_advisor_agent
+            st.session_state["chatbot_agent"] = chatbot_agent
             st.session_state.agent_initialized = True
             st.rerun()
         except Exception as e:
-            logger.error("Failed to initialize agent: %s", str(e), exc_info=True)
-            st.error(f"Failed to initialize agent: {e}")
+            logger.error(
+                "Failed to initialize chatbot agent: %s", str(e), exc_info=True
+            )
+            st.error(f"Failed to initialize chatbot agent: {e}")
             st.session_state.provider = None
             st.session_state.agent_initialized = False
             st.rerun()
@@ -389,9 +437,21 @@ def main():
     )
 
     try:
-        logger.debug("Getting cached agent for provider: %s", st.session_state.provider)
-        agent = initialize_agent(st.session_state.provider)
-        logger.info("Agent retrieved successfully")
+        logger.debug(
+            "Retrieving cached chatbot and financial advisor for provider: %s",
+            st.session_state.provider,
+        )
+        # Prefer stored instances in session_state to avoid re-initialization
+        chatbot_agent = st.session_state.get("chatbot_agent") or initialize_chatbot(
+            st.session_state.provider
+        )
+        financial_advisor_agent = st.session_state.get(
+            "financial_advisor_agent"
+        ) or initialize_financial_advisor(st.session_state.provider)
+        # Ensure session_state holds the instances
+        st.session_state["chatbot_agent"] = chatbot_agent
+        st.session_state["financial_advisor_agent"] = financial_advisor_agent
+        logger.info("Agents retrieved successfully")
     except Exception as e:
         logger.error("Failed to retrieve agent: %s", str(e), exc_info=True)
         st.error(f"Failed to retrieve agent: {e}")
@@ -410,7 +470,9 @@ def main():
         # Provider info - health check only once
         if not st.session_state.health_check_done:
             logger.debug("Performing health check for the first time")
-            st.session_state.agent_is_healthy = agent.is_healthy()
+            st.session_state.agent_is_healthy = (
+                chatbot_agent.is_healthy() and financial_advisor_agent.is_healthy()
+            )
             st.session_state.health_check_done = True
             logger.debug(
                 "Health check completed: %s", st.session_state.agent_is_healthy
@@ -418,10 +480,10 @@ def main():
 
         if st.session_state.agent_is_healthy:
             logger.debug("Agent health check passed")
-            st.success("✅ Agent initialized!")
+            st.success("Agents initialized!")
         else:
             logger.warning("Agent health check failed")
-            st.warning("⚠️ Agent running but connection may be unstable")
+            st.warning("⚠️ Agents running but connection may be unstable")
 
         # Change provider
         if st.button("🔄 Change Provider", use_container_width=True):
@@ -440,8 +502,8 @@ def main():
         # Clear history button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
             logger.debug("Clearing conversation history")
-            agent.clear_memory()
-            agent.reset_questions()
+            chatbot_agent.clear_memory()
+            chatbot_agent.reset_questions()
             st.session_state.messages = []
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
@@ -473,13 +535,13 @@ def main():
                 logger.info(
                     "Profile loaded successfully, auto-generation will happen in display section"
                 )
-                st.success("✅ Profile loaded successfully!")
+                st.success("Profile loaded successfully!")
                 st.rerun()
 
         # Model info
         st.divider()
         st.subheader("📊 Model Information")
-        config = agent.get_config_summary()
+        config = chatbot_agent.get_config_summary()
         st.write(f"**Provider:** {config['provider'].upper()}")
         st.write(f"**Model:** {config['model']}")
         st.write(f"**Agent:** {config['name']}")
@@ -488,7 +550,7 @@ def main():
         # Progress info
         st.divider()
         st.subheader("📋 Assessment Progress")
-        progress = agent.get_questions_progress()
+        progress = chatbot_agent.get_questions_progress()
         st.write(
             f"**Question {progress['current_index'] + 1} of {progress['total_questions']}**"
         )
@@ -501,19 +563,21 @@ def main():
 
         try:
             # Get the first question (without advancing yet - we're at index 0)
-            first_question = agent.get_current_question()
+            first_question = chatbot_agent.get_current_question()
             logger.debug("First question: %s", first_question)
 
             # Format the welcome prompt template
-            welcome_prompt = agent.welcome_prompt.format(first_question=first_question)
+            welcome_prompt = chatbot_agent.welcome_prompt.format(
+                first_question=first_question
+            )
 
-            welcome_message = agent.chat(welcome_prompt)
+            welcome_message = chatbot_agent.chat(welcome_prompt)
             st.session_state.messages.append(
                 {"role": "assistant", "content": welcome_message}
             )
 
             # Now advance to the next question index for the first user response
-            agent.advance_to_next_question()
+            chatbot_agent.advance_to_next_question()
             logger.debug("Welcome message sent, advanced to question index 1")
         except Exception as e:
             logger.error(
@@ -530,7 +594,7 @@ def main():
     if st.session_state.conversation_completed:
         logger.debug("Conversation is completed, showing completion message")
         st.info(
-            "✅ **Assessment completed!** All your financial questions have been answered and the summary has been provided. "
+            "**Assessment completed!** All your financial questions have been answered and the summary has been provided. "
             "Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over."
         )
 
@@ -588,7 +652,7 @@ def main():
                     "🔄 Analyzing profile and retrieving relevant ETF assets..."
                 ):
                     portfolio = generate_portfolio_for_profile(
-                        agent, st.session_state.financial_profile
+                        financial_advisor_agent, st.session_state.financial_profile
                     )
                     if portfolio:
                         st.session_state.generated_portfolio = portfolio
@@ -597,14 +661,15 @@ def main():
                     else:
                         logger.warning("Failed to generate portfolio")
                         st.error(
-                            "❌ Could not auto-generate portfolio. Try clicking the button below."
+                            "Could not auto-generate portfolio. Try clicking the button below."
                         )
                         if st.button(
                             "Generate Portfolio with RAG", key="generate_portfolio"
                         ):
                             logger.info("Portfolio generation requested manually")
                             portfolio = generate_portfolio_for_profile(
-                                agent, st.session_state.financial_profile
+                                financial_advisor_agent,
+                                st.session_state.financial_profile,
                             )
                             if portfolio:
                                 st.session_state.generated_portfolio = portfolio
@@ -725,10 +790,15 @@ def main():
                                     logger.debug(
                                         "Fetching returns for asset: %s", asset_symbol
                                     )
-
-                                    # Call agent.analyze_asset to get structured asset data
-                                    result_data = agent.analyze_asset(
+                                    # Call advisor.analyze_asset to get structured asset data
+                                    result_data = financial_advisor_agent.analyze_asset(
                                         asset_symbol, years=10
+                                    )
+
+                                    logger.debug(
+                                        "Received data for %s: %s",
+                                        asset_symbol,
+                                        result_data,
                                     )
 
                                     if result_data.get("success"):
@@ -843,31 +913,33 @@ def main():
                         logger.debug("Getting response from agent")
                         logger.debug(
                             "Current question index before advance: %d",
-                            agent.current_question_index,
+                            chatbot_agent.current_question_index,
                         )
 
                         # Check if there are more questions AFTER this one
-                        has_more_questions = agent.advance_to_next_question()
+                        has_more_questions = chatbot_agent.advance_to_next_question()
                         logger.debug(
                             "After advance - has_more_questions: %s, current_index: %d",
                             has_more_questions,
-                            agent.current_question_index,
+                            chatbot_agent.current_question_index,
                         )
 
                         if has_more_questions:
                             # There are more questions to ask
-                            next_question = agent.get_current_question()
+                            next_question = chatbot_agent.get_current_question()
                             logger.debug(
                                 "Next question available: %s", next_question[:50]
                             )
 
                             # Format the acknowledge and ask prompt template
-                            response_prompt = agent.acknowledge_and_ask_prompt.format(
-                                user_answer=prompt, next_question=next_question
+                            response_prompt = (
+                                chatbot_agent.acknowledge_and_ask_prompt.format(
+                                    user_answer=prompt, next_question=next_question
+                                )
                             )
 
                             # Get response from agent
-                            response_text = agent.chat(response_prompt)
+                            response_text = chatbot_agent.chat(response_prompt)
                             logger.debug(
                                 "Response generated, length: %d", len(response_text)
                             )
@@ -900,22 +972,36 @@ def main():
                             )
 
                             # Format the summary prompt with the conversation history
-                            summary_prompt = agent.summary_prompt.format(
+                            summary_prompt = chatbot_agent.summary_prompt.format(
                                 user_answer=prompt,
                                 conversation_history=conversation_history,
                             )
-                            response_text = agent.chat(summary_prompt)
+                            response_text = chatbot_agent.chat(summary_prompt)
                             logger.debug(
                                 "Final summary generated, length: %d",
                                 len(response_text),
                             )
                             logger.info("All questions completed, summary provided")
 
-                            # Extract structured financial profile
-                            logger.debug("Extracting structured financial profile")
+                            # Extract structured financial profile using financial advisor
+                            logger.debug(
+                                "Extracting structured financial profile using financial advisor"
+                            )
                             try:
-                                financial_profile = agent.extract_financial_profile(
-                                    response_text
+                                # Ensure financial advisor instance is available
+                                financial_advisor = st.session_state.get(
+                                    "financial_advisor"
+                                ) or initialize_financial_advisor(
+                                    st.session_state.provider
+                                )
+                                st.session_state[
+                                    "financial_advisor"
+                                ] = financial_advisor
+
+                                financial_profile = (
+                                    financial_advisor.extract_financial_profile(
+                                        response_text
+                                    )
                                 )
                                 logger.info("Financial profile extracted successfully")
 
@@ -944,7 +1030,7 @@ def main():
                     logger.error(
                         "Error processing user input: %s", str(e), exc_info=True
                     )
-                    error_msg = f"❌ Error: {str(e)}"
+                    error_msg = f"Error: {str(e)}"
                     st.error(error_msg)
                     st.session_state.messages.append(
                         {"role": "assistant", "content": error_msg}
