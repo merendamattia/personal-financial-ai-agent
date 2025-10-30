@@ -1,3 +1,25 @@
+# [1.2.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.1.0...v1.2.0) (2025-10-30)
+
+
+### Bug Fixes
+
+* correct assertion syntax in TestFinancialProfileCreation ([0803e39](https://github.com/merendamattia/personal-financial-ai-agent/commit/0803e399db1dd4377d9886557555caf138f1d823))
+* rename financial advisor variable for consistency in main function ([f8406d4](https://github.com/merendamattia/personal-financial-ai-agent/commit/f8406d4612eee5ea9490713eb64ab2d49df9ef7b))
+* set default values for financial profile fields to improve data handling ([640ebf7](https://github.com/merendamattia/personal-financial-ai-agent/commit/640ebf7275722c51e67b9ace5453ae67f200b606))
+* update default max steps for FinancialAdvisorAgent from 1 to 3 ([557b76b](https://github.com/merendamattia/personal-financial-ai-agent/commit/557b76b1cfdeee8c0362a567a3f3ffa094bdebbf))
+* update default values for age_range and employment_status in FinancialProfile model ([6d01a79](https://github.com/merendamattia/personal-financial-ai-agent/commit/6d01a797c3df7b75cfc48743787276c877222b2b))
+* update default years parameter in analyze_financial_asset function from 5 to 10 ([08a6121](https://github.com/merendamattia/personal-financial-ai-agent/commit/08a6121e0c426e447cc60afcf1240dc66440a0aa))
+
+
+### Features
+
+* add BaseAgent, ChatbotAgent, and FinancialAdvisorAgent modules ([2d6ff8b](https://github.com/merendamattia/personal-financial-ai-agent/commit/2d6ff8b8c907763d75ddc56a74008bd1c85e6c31))
+* add financial tools for price retrieval and return calculations ([6e53f6a](https://github.com/merendamattia/personal-financial-ai-agent/commit/6e53f6a03976ec71694779f36386b6bb55ab15ba))
+* add historical returns analysis for portfolio assets and enhance asset analysis tool ([eefebe9](https://github.com/merendamattia/personal-financial-ai-agent/commit/eefebe9c31ffe74ab319fde268463a870d16881c))
+* enhance financial analysis tool with structured JSON response and year return models ([9dc2ed3](https://github.com/merendamattia/personal-financial-ai-agent/commit/9dc2ed3eeff3aa4a6ea4e44e705ab11de7cc23e1))
+* implement financial tools with structured responses for symbol resolution, historical prices, and return calculations ([845ef28](https://github.com/merendamattia/personal-financial-ai-agent/commit/845ef2836b3be768b07e975845f6754f6f80921a))
+* load financial profile from uploaded JSON file ([7bebcf4](https://github.com/merendamattia/personal-financial-ai-agent/commit/7bebcf40babacd13bd871cbcacf4baaeafd1fc5c))
+
 # [1.1.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.0.0...v1.1.0) (2025-10-28)
 
 
