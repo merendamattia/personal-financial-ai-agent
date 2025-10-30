@@ -4,14 +4,11 @@ Financial Tools Package.
 This package contains tools for retrieving and analyzing financial asset data.
 
 Available tools:
-- get_historical_prices: Retrieve historical price data
-- calculate_returns: Calculate investment returns from price data
+- analyze_financial_asset: Unified tool for complete financial asset analysis
 """
 
-from .prices import get_historical_prices
-from .returns import calculate_returns
+from .analyze_financial_asset import analyze_financial_asset
 
 __all__ = [
-    "get_historical_prices",
-    "calculate_returns",
+    "analyze_financial_asset",
 ]
