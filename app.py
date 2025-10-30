@@ -1071,17 +1071,17 @@ def main():
                             )
                             try:
                                 # Ensure financial advisor instance is available
-                                financial_advisor = st.session_state.get(
-                                    "financial_advisor"
+                                financial_advisor_agent = st.session_state.get(
+                                    "financial_advisor_agent"
                                 ) or initialize_financial_advisor(
                                     st.session_state.provider
                                 )
                                 st.session_state[
-                                    "financial_advisor"
-                                ] = financial_advisor
+                                    "financial_advisor_agent"
+                                ] = financial_advisor_agent
 
                                 financial_profile = (
-                                    financial_advisor.extract_financial_profile(
+                                    financial_advisor_agent.extract_financial_profile(
                                         response_text
                                     )
                                 )
