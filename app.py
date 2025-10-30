@@ -252,11 +252,11 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                 asset_symbol = (
                     asset.get("symbol") if isinstance(asset, dict) else asset.symbol
                 )
-                asset_percentage = (
-                    asset.get("percentage")
-                    if isinstance(asset, dict)
-                    else asset.percentage
-                )
+                # asset_percentage = (
+                #     asset.get("percentage")
+                #     if isinstance(asset, dict)
+                #     else asset.percentage
+                # )
 
                 if asset_symbol:
                     try:
@@ -303,7 +303,7 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                             returns_data.append(
                                 {
                                     "Asset": f"{company_name} ({asset_symbol})",
-                                    "Allocation %": asset_percentage,
+                                    # "Allocation %": asset_percentage,
                                     "1-Year Return %": get_return_for_year(1),
                                     "3-Year Return %": get_return_for_year(3),
                                     "5-Year Return %": get_return_for_year(5),
@@ -319,7 +319,7 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                             returns_data.append(
                                 {
                                     "Asset": f"{asset_symbol} (Error)",
-                                    "Allocation %": asset_percentage,
+                                    # "Allocation %": asset_percentage,
                                     "1-Year Return %": "N/A",
                                     "3-Year Return %": "N/A",
                                     "5-Year Return %": "N/A",
@@ -336,7 +336,7 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                         returns_data.append(
                             {
                                 "Asset": f"{asset_symbol} (Error)",
-                                "Allocation %": asset_percentage,
+                                # "Allocation %": asset_percentage,
                                 "1-Year Return %": "N/A",
                                 "3-Year Return %": "N/A",
                                 "5-Year Return %": "N/A",
