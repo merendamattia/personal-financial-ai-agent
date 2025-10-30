@@ -17,7 +17,9 @@ from datapizza.type import ROLE, TextBlock
 
 from ..clients import get_client, list_providers
 from ..models import FinancialProfile, Portfolio
+from ..models.tools import FinancialAnalysisResponse
 from ..retrieval import RAGAssetRetriever
+from ..tools import analyze_financial_asset
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -308,13 +310,29 @@ class ChatBotAgent:
         agent = Agent(
             name=self.name,
             client=self._client,
-            # tools=[],
+            tools=[analyze_financial_asset],
             memory=self._memory,
             planning_interval=5,
         )
 
         logger.info("Agent created successfully with name: %s", self.name)
         return agent
+
+    def run(self, task_input: str, tool_choice: str = "auto") -> str:
+        """
+        Process a user message and return the agent's response.
+
+        Args:
+            task_input: The user's input message
+            tool_choice: Tool selection mode ("auto", "none", "required_first", "required")
+
+        Returns:
+            The agent's response text
+
+        Raises:
+            Exception: If the agent fails to process the message
+        """
+        return self._agent.run(task_input=task_input, tool_choice=tool_choice)
 
     def chat(self, user_message: str) -> str:
         """
@@ -638,6 +656,51 @@ Please extract all available financial information and structure it according to
                 "Failed to extract financial profile: %s", str(e), exc_info=True
             )
             raise RuntimeError(f"Failed to extract financial profile: {e}") from e
+
+    def analyze_asset(self, ticker: str, years: int = 10) -> dict:
+        """
+        Analyze a financial asset and extract structured return data.
+
+        Directly calls the analyze_financial_asset tool and parses the JSON response.
+        No need for agent orchestration since the tool does the work directly.
+
+        Args:
+            ticker: The stock/ETF ticker symbol (e.g., 'SWDA', 'IX5A')
+            years: Number of years to analyze (default: 10)
+
+        Returns:
+            dict: Asset analysis data as dictionary with returns, dates, and metrics
+
+        Raises:
+            Exception: If the analysis fails
+        """
+        logger.debug("Analyzing asset %s for %d years", ticker, years)
+
+        try:
+            # Call the tool directly - it returns JSON string with all analysis
+            logger.debug("Calling analyze_financial_asset tool for %s", ticker)
+            result_json = analyze_financial_asset(ticker=ticker, years=years)
+
+            logger.debug("Tool returned JSON, parsing...")
+
+            # Parse the JSON string returned by the tool
+            analysis_dict = json.loads(result_json)
+
+            logger.info("Asset analysis completed for %s", ticker)
+            logger.debug("Analysis keys: %s", list(analysis_dict.keys()))
+
+            return analysis_dict
+
+        except json.JSONDecodeError as e:
+            logger.error(
+                "Failed to parse JSON from tool result for %s: %s", ticker, str(e)
+            )
+            raise RuntimeError(f"Invalid JSON from tool for {ticker}: {e}") from e
+        except Exception as e:
+            logger.error(
+                "Failed to analyze asset %s: %s", ticker, str(e), exc_info=True
+            )
+            raise RuntimeError(f"Failed to analyze asset {ticker}: {e}") from e
 
     def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
         """
