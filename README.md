@@ -1,109 +1,153 @@
-# personal-financial-ai-agent
+# 💰 Personal Financial AI Agent
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Latest Release](https://img.shields.io/github/v/release/merendamattia/personal-financial-ai-agent?label=release)](https://github.com/merendamattia/personal-financial-ai-agent/releases)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 
-A personal financial advisor AI agent: get intelligent financial guidance in your preferred language, with local LLM inference!
+An intelligent personal financial advisor powered by AI. Get expert financial guidance in your preferred language with support for multiple LLM providers, including local offline inference with Ollama.
 
-## Requirements
+## ✨ Features
 
-- Python 3.11+
-- Ollama installed and running (optional)
+- 🤖 **Multi-Provider AI Support** - Choose from Ollama (local), Google Gemini, or OpenAI
+- 💬 **Interactive Conversations** - Natural language financial discussions
+- 📊 **Portfolio Analysis** - AI-generated portfolio recommendations based on your profile
+- 📈 **Historical Data** - 10-year historical returns for analyzed assets
+- 🛡️ **Privacy First** - Full offline support with Ollama
+- 🌐 **Multi-Language** - Communicate in your preferred language
+- 📥 **Profile Management** - Load, save, and download financial profiles as JSON
 
-## Quick Installation
+## 📋 Requirements
 
-1. Create and activate a virtual environment:
-```bash
-conda create --name personal-financial-ai-agent-env python=3.11.13
-conda activate personal-financial-ai-agent-env
-```
+- **Python 3.11+**
+- **Ollama** (optional, for local LLM inference)
 
-2. Install dependencies:
-```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+## 🚀 Getting Started
 
-3. Prepare environment variables:
+### Installation
 
-```bash
-cp .env.example .env
-```
+1. **Clone the repository and enter the directory:**
+   ```bash
+   git clone https://github.com/merendamattia/personal-financial-ai-agent.git
+   cd personal-financial-ai-agent
+   ```
 
-Edit `.env` to set required API keys and/or configure Ollama.
+2. **Create and activate a Python virtual environment:**
+   ```bash
+   conda create --name personal-financial-ai-agent python=3.11.13
+   conda activate personal-financial-ai-agent
+   ```
 
-4. Unzip the dataset:
-```bash
-cd dataset
-unzip ETFs.zip
-```
+3. **Install dependencies:**
+   ```bash
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
 
-## Usage
+4. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and preferences
+   ```
 
+5. **Extract the dataset:**
+   ```bash
+   cd dataset
+   unzip ETFs.zip
+   cd ..
+   ```
+
+### Running the Application
+
+**Local Streamlit:**
 ```bash
 streamlit run app.py
 ```
+Then open http://localhost:8501 in your browser.
 
-Open http://localhost:8501 in your browser and start chatting.
-
-On first launch, a modal dialog will appear asking you to select your preferred LLM provider. Choose from the available options based on what you have configured.
-
-### Docker
-You can use Docker to avoid local installations.
-
-With Docker Compose (includes optional Ollama container):
+**Docker Compose (recommended):**
 ```bash
+# Start (includes Ollama container)
 docker compose up
-docker compose down # shutdown
+
+# Stop
+docker compose down
 ```
+Access at http://localhost:8501
 
-This will start:
-- **financial-ai-agent** on http://localhost:8501
-- **ollama** on http://localhost:11434 (automatically downloads the model in `.env` file on first start)
-
-The first startup may take a few minutes while Ollama downloads the model.
-
-Or with docker run (without Ollama):
+**Docker (without Ollama):**
 ```bash
 docker build --no-cache -t financial-ai-agent:local .
 docker run -p 8501:8501 --env-file .env financial-ai-agent:local
 ```
 
-Access at http://localhost:8501
+> **Note:** On first launch, you'll be prompted to select your preferred LLM provider.
 
-## Supported LLM Providers
+## 🤖 Supported LLM Providers
 
-The agent supports multiple LLM providers. Simply configure the necessary credentials and select your preferred provider from the UI:
+Choose your preferred AI provider based on your needs:
 
-### Ollama (Local Models)
+### 🦙 Ollama (Recommended for Privacy)
+- **Cost:** Free
+- **Privacy:** 100% offline, no data sent to external servers
+- **Setup:**
+  1. Download and install [Ollama](https://ollama.com/)
+  2. Start Ollama: `ollama serve`
+- **Configuration:**
+  - `OLLAMA_MODEL` in `.env` (default: `qwen3:0.6b`)
+  - `OLLAMA_API_URL` in `.env` (default: `http://localhost:11434/v1`)
 
-- **No API key required** - fully offline
-- **Setup**: Download and install [Ollama](https://ollama.com/), then start it on your system
-- **Model**: Configure `OLLAMA_MODEL` in `.env` (default: `qwen3:0.6b`)
-- **API URL**: `OLLAMA_API_URL` in `.env` (default: `http://localhost:11434/v1`)
+### 🌐 Google Generative AI (Gemini)
+- **Cost:** Free tier available, then pay-as-you-go
+- **Privacy:** Cloud-based processing
+- **Setup:**
+  1. Get API key from [AI Studio](https://aistudio.google.com/app/apikey)
+  2. Set `GOOGLE_API_KEY` in `.env`
+- **Configuration:**
+  - `GOOGLE_MODEL` in `.env` (default: `gemini-2.5-flash`)
 
-### Google Generative AI (Gemini)
+### ✨ OpenAI (GPT Models)
+- **Cost:** Pay-as-you-go, no free tier
+- **Privacy:** Cloud-based processing
+- **Setup:**
+  1. Create account and get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+  2. Set `OPENAI_API_KEY` in `.env`
+- **Configuration:**
+  - `OPENAI_MODEL` in `.env` (default: `gpt-4o-mini`)
 
-- Get an API key from [AI Studio](https://aistudio.google.com/app/apikey)
-- Set `GOOGLE_API_KEY` in `.env`
-- Configure `GOOGLE_MODEL` in `.env` (default: `gemini-2.0-flash`)
+**Provider Selection:**
+The app detects available providers from your `.env` configuration. Select your preferred provider when starting the app or switch anytime using the sidebar button.
 
-### OpenAI (GPT Models)
+## 🧪 Testing
 
-- Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-- Set `OPENAI_API_KEY` in `.env`
-- Configure `OPENAI_MODEL` in `.env` (default: `gpt-4o-mini`)
-
-### Provider Selection
-
-The app automatically detects which providers are available based on your `.env` configuration and displays only those options. Select your preferred provider when you start the app, or simply click the provider button in the chat interface to switch providers.
-
-## Contributing
-
-Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines, including how to set up pre-commit hooks and follow our commit conventions.
-
-## Tests
-You can run tests with:
+Run the test suite:
 ```bash
-pytest -q
+pytest -q # Quick run
+pytest -v # Verbose output
 ```
+
+See `tests/` directory for available test files.
+
+## 🔧 How It Works
+
+1. **Agent Selection** → Choose your preferred LLM provider
+2. **Conversation** → Answer financial assessment questions
+3. **Profile Extraction** → AI extracts your financial profile from responses
+4. **Portfolio Generation** → RAG-enhanced advisor generates personalized portfolio
+5. **Analysis** → View historical returns and investment recommendations
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+- Development setup
+- Pre-commit hooks configuration
+- Commit convention guidelines
+- Pull request process
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
+
+## 📞 Support
+
+For issues, feature requests, or questions:
+- Open an [issue on GitHub](https://github.com/merendamattia/personal-financial-ai-agent/issues)
