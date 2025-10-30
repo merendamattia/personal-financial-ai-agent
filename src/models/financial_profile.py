@@ -15,11 +15,11 @@ class FinancialProfile(BaseModel):
 
     # Personal Information
     age_range: str = Field(
-        default="None",
+        default="18-65",
         description="Age range of the user (e.g., '25-34', '35-44', etc.)",
     )
     employment_status: str = Field(
-        default="None",
+        default="Employed",
         description="Employment status (e.g., 'employed', 'self-employed', 'retired', etc.)",
     )
     occupation: Optional[str] = Field(
