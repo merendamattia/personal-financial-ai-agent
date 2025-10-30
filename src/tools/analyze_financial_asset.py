@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def analyze_financial_asset(ticker: str, years: int = 5) -> str:
+def analyze_financial_asset(ticker: str, years: int = 10) -> str:
     """
     Comprehensive financial asset analysis tool.
 
@@ -30,7 +30,7 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
 
     Args:
         ticker: The stock/ETF ticker symbol (e.g., 'SWDA', 'AAPL', 'BND')
-        years: Number of years to analyze (default: 5). Returns will be calculated
+        years: Number of years to analyze (default: 10). Returns will be calculated
                for each year from 1 to the specified number of years.
 
     Returns:
