@@ -35,9 +35,9 @@ class TestFinancialProfileCreation:
             financial_knowledge_level="beginner",
             # Optional fields not set
         )
-        assert profile.occupation is "None"
-        assert profile.additional_income_sources is "None"
-        assert profile.summary_notes is "None"
+        assert profile.occupation == "None"
+        assert profile.additional_income_sources == "None"
+        assert profile.summary_notes == "None"
 
     def test_geographic_allocation_default(self):
         """Test that geographic_allocation has correct default."""
