@@ -4,11 +4,9 @@ Unified financial analysis tool.
 This module provides a single tool that combines price retrieval and return calculation
 for a comprehensive financial asset analysis.
 """
-
-import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import yfinance as yf
 from datapizza.tools import tool

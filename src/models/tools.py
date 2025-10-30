@@ -5,7 +5,7 @@ This module defines Pydantic models for the return types of financial tools.
 These models ensure type safety and serialization compatibility with the Agent.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field
 
