@@ -230,6 +230,129 @@ def stream_text(text: str, chunk_size: int = 20):
         time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
+def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
+    """
+    Fetch and display historical returns data for portfolio assets.
+
+    Args:
+        portfolio: The portfolio dictionary containing assets
+        financial_advisor_agent: The FinancialAdvisorAgent instance
+
+    Returns:
+        None (displays data using st components)
+    """
+    logger.debug("Fetching historical returns for portfolio assets")
+
+    # Collect returns data
+    returns_data = []
+
+    if "assets" in portfolio and isinstance(portfolio["assets"], list):
+        with st.spinner("🔄 Retrieving 10-year historical data for assets..."):
+            for asset in portfolio["assets"]:
+                asset_symbol = (
+                    asset.get("symbol") if isinstance(asset, dict) else asset.symbol
+                )
+                asset_percentage = (
+                    asset.get("percentage")
+                    if isinstance(asset, dict)
+                    else asset.percentage
+                )
+
+                if asset_symbol:
+                    try:
+                        logger.debug("Fetching returns for asset: %s", asset_symbol)
+                        if asset_symbol.upper() == "BITCOIN":
+                            asset_symbol = "BTC-EUR"
+
+                        # Call advisor.analyze_asset to get structured asset data
+                        result_data = financial_advisor_agent.analyze_asset(
+                            asset_symbol, years=10
+                        )
+
+                        logger.debug(
+                            "Received data for %s: %s",
+                            asset_symbol,
+                            result_data,
+                        )
+
+                        if result_data.get("success"):
+                            logger.debug(
+                                "Successfully retrieved data for %s",
+                                asset_symbol,
+                            )
+                            logger.debug("Result data: %s", result_data)
+
+                            # Extract company name for display
+                            company_name = result_data.get("company_name", asset_symbol)
+
+                            # Extract returns
+                            returns = result_data.get("returns", [])
+
+                            # Helper function to get return for specific year
+                            def get_return_for_year(year_val):
+                                for ret in returns:
+                                    if ret.get("year") == year_val:
+                                        val = ret.get("percentage")
+                                        return (
+                                            f"{val:.2f}%"
+                                            if isinstance(val, (int, float))
+                                            else "N/A"
+                                        )
+                                return "N/A"
+
+                            returns_data.append(
+                                {
+                                    "Asset": f"{company_name} ({asset_symbol})",
+                                    "Allocation %": asset_percentage,
+                                    "1-Year Return %": get_return_for_year(1),
+                                    "3-Year Return %": get_return_for_year(3),
+                                    "5-Year Return %": get_return_for_year(5),
+                                    "10-Year Return %": get_return_for_year(10),
+                                }
+                            )
+                        else:
+                            logger.warning(
+                                "Failed to retrieve data for %s: %s",
+                                asset_symbol,
+                                result_data.get("error"),
+                            )
+                            returns_data.append(
+                                {
+                                    "Asset": f"{asset_symbol} (Error)",
+                                    "Allocation %": asset_percentage,
+                                    "1-Year Return %": "N/A",
+                                    "3-Year Return %": "N/A",
+                                    "5-Year Return %": "N/A",
+                                    "10-Year Return %": "N/A",
+                                }
+                            )
+
+                    except Exception as e:
+                        logger.error(
+                            "Error fetching returns for %s: %s",
+                            asset_symbol,
+                            str(e),
+                        )
+                        returns_data.append(
+                            {
+                                "Asset": f"{asset_symbol} (Error)",
+                                "Allocation %": asset_percentage,
+                                "1-Year Return %": "N/A",
+                                "3-Year Return %": "N/A",
+                                "5-Year Return %": "N/A",
+                                "10-Year Return %": "N/A",
+                            }
+                        )
+
+    # Display returns table
+    if returns_data:
+        df_returns = pd.DataFrame(returns_data)
+        st.dataframe(df_returns, width="stretch", hide_index=True)
+        logger.info("Returns table displayed successfully")
+    else:
+        st.info("📌 Unable to retrieve historical data for assets in the portfolio.")
+
+
 def generate_portfolio_for_profile(advisor_agent, profile):
     """
     Generate a balanced portfolio for the given financial profile.
@@ -761,135 +884,10 @@ def main():
                                 st.write(f"• {consideration}")
 
                 # Display historical returns for assets
-                st.divider()
                 st.markdown("### 📊 Historical Returns (Last 10 Years)")
-
-                logger.debug("Fetching historical returns for portfolio assets")
-
-                # Collect returns data
-                returns_data = []
-
-                if "assets" in portfolio and isinstance(portfolio["assets"], list):
-                    with st.spinner(
-                        "🔄 Retrieving 10-year historical data for assets..."
-                    ):
-                        for asset in portfolio["assets"]:
-                            asset_symbol = (
-                                asset.get("symbol")
-                                if isinstance(asset, dict)
-                                else asset.symbol
-                            )
-                            asset_percentage = (
-                                asset.get("percentage")
-                                if isinstance(asset, dict)
-                                else asset.percentage
-                            )
-
-                            if asset_symbol:
-                                try:
-                                    logger.debug(
-                                        "Fetching returns for asset: %s", asset_symbol
-                                    )
-                                    # Call advisor.analyze_asset to get structured asset data
-                                    result_data = financial_advisor_agent.analyze_asset(
-                                        asset_symbol, years=10
-                                    )
-
-                                    logger.debug(
-                                        "Received data for %s: %s",
-                                        asset_symbol,
-                                        result_data,
-                                    )
-
-                                    if result_data.get("success"):
-                                        logger.debug(
-                                            "Successfully retrieved data for %s",
-                                            asset_symbol,
-                                        )
-                                        logger.debug("Result data: %s", result_data)
-
-                                        # Extract company name for display
-                                        company_name = result_data.get(
-                                            "company_name", asset_symbol
-                                        )
-
-                                        # Extract returns
-                                        returns = result_data.get("returns", [])
-
-                                        # Helper function to get return for specific year
-                                        def get_return_for_year(year_val):
-                                            for ret in returns:
-                                                if ret.get("year") == year_val:
-                                                    val = ret.get("percentage")
-                                                    return (
-                                                        f"{val:.2f}%"
-                                                        if isinstance(val, (int, float))
-                                                        else "N/A"
-                                                    )
-                                            return "N/A"
-
-                                        returns_data.append(
-                                            {
-                                                "Asset": f"{company_name} ({asset_symbol})",
-                                                "Allocation %": asset_percentage,
-                                                "1-Year Return %": get_return_for_year(
-                                                    1
-                                                ),
-                                                "3-Year Return %": get_return_for_year(
-                                                    3
-                                                ),
-                                                "5-Year Return %": get_return_for_year(
-                                                    5
-                                                ),
-                                                "10-Year Return %": get_return_for_year(
-                                                    10
-                                                ),
-                                            }
-                                        )
-                                    else:
-                                        logger.warning(
-                                            "Failed to retrieve data for %s: %s",
-                                            asset_symbol,
-                                            result_data.get("error"),
-                                        )
-                                        returns_data.append(
-                                            {
-                                                "Asset": f"{asset_symbol} (Error)",
-                                                "Allocation %": asset_percentage,
-                                                "1-Year Return %": "N/A",
-                                                "3-Year Return %": "N/A",
-                                                "5-Year Return %": "N/A",
-                                                "10-Year Return %": "N/A",
-                                            }
-                                        )
-
-                                except Exception as e:
-                                    logger.error(
-                                        "Error fetching returns for %s: %s",
-                                        asset_symbol,
-                                        str(e),
-                                    )
-                                    returns_data.append(
-                                        {
-                                            "Asset": f"{asset_symbol} (Error)",
-                                            "Allocation %": asset_percentage,
-                                            "1-Year Return %": "N/A",
-                                            "3-Year Return %": "N/A",
-                                            "5-Year Return %": "N/A",
-                                            "10-Year Return %": "N/A",
-                                        }
-                                    )
-
-                # Display returns table
-                if returns_data:
-                    df_returns = pd.DataFrame(returns_data)
-                    st.dataframe(df_returns, width="stretch", hide_index=True)
-                    logger.info("Returns table displayed successfully")
-                else:
-                    st.info(
-                        "📌 Unable to retrieve historical data for assets in the portfolio."
-                    )
-
+                _fetch_and_display_historical_returns(
+                    portfolio, financial_advisor_agent
+                )
                 logger.info("Portfolio display completed")
 
         else:
