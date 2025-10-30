@@ -3,7 +3,7 @@
 import json
 import sys
 
-from src.core import ChatBotAgent
+from src.core import ChatbotAgent
 
 
 def create_test_profile() -> dict:
@@ -49,13 +49,13 @@ def test_portfolio_generation():
     print("=" * 80)
 
     try:
-        # Create ChatBotAgent with Google provider
-        print("Initializing ChatBotAgent with Google provider...")
-        agent = ChatBotAgent(
+        # Create ChatbotAgent with Google provider
+        print("Initializing ChatbotAgent with Google provider...")
+        agent = ChatbotAgent(
             name="FinancialAdvisor",
             provider="google",
         )
-        print("ChatBotAgent initialized with Google provider")
+        print("ChatbotAgent initialized with Google provider")
 
         # Check RAG retriever
         if agent._rag_retriever:

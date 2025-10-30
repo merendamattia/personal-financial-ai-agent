@@ -8,6 +8,7 @@ AI agent powered by datapizza-ai and multiple LLM providers.
 import logging
 import os
 import time
+from typing import Optional
 
 import pandas as pd
 import requests
@@ -15,7 +16,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.clients import list_providers
-from src.core import ChatBotAgent
+from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
 
 # Configure logging
@@ -115,72 +116,96 @@ def get_available_providers() -> list:
     return available
 
 
-def get_test_financial_profile() -> FinancialProfile:
+def load_profile_from_json(uploaded_file) -> FinancialProfile:
     """
-    Create a test/demo financial profile for testing charts and displays.
+    Load a financial profile from an uploaded JSON file.
+
+    Args:
+        uploaded_file: Streamlit uploaded file object
 
     Returns:
-        A sample FinancialProfile with realistic Italian financial data
+        FinancialProfile object if valid, None otherwise
     """
-    logger.debug("Creating test financial profile")
+    try:
+        import json
 
-    profile = FinancialProfile(
-        # Personal Information
-        age_range="35-44",
-        employment_status="employed",
-        occupation="Software Engineer",
-        # Income Information
-        annual_income_range="50000-70000€",
-        income_stability="stable",
-        additional_income_sources="Freelance projects, ~5000€/year",
-        # Expenses and Debts
-        monthly_expenses_range="2500-3000€",
-        major_expenses="Mortgage (1200€), Car payment (300€), Utilities (200€)",
-        total_debt="30000-50000€",
-        debt_types="Mortgage (primary), Car loan (secondary)",
-        # Savings and Investments
-        savings_amount="45000-55000€",
-        emergency_fund_months="6",
-        investments="ETF (60%), Azioni italiane (30%), Criptovalute (10%)",
-        investment_experience="intermediate",
-        # Goals
-        primary_goals="Accumulare ricchezza per la pensione, Estinguere il mutuo",
-        short_term_goals="Costruire un fondo di emergenza più solido, Aumentare investimenti mensili",
-        long_term_goals="Raggiungere l'indipendenza finanziaria entro i 55 anni",
-        # Risk Profile
-        risk_tolerance="moderate",
-        risk_concerns="Market volatility, Economic recession, Loss of income",
-        # Knowledge and Other
-        financial_knowledge_level="intermediate",
-        family_dependents="2 children",
-        insurance_coverage="Life insurance (50000€), Home insurance, Car insurance",
-        summary_notes="Solid financial foundation with room for growth. Good income stability and emergency fund coverage.",
-    )
+        logger.debug("Loading financial profile from JSON file: %s", uploaded_file.name)
 
-    logger.debug("Test financial profile created successfully")
-    return profile
+        # Read the file content
+        file_content = uploaded_file.read().decode("utf-8")
+        data = json.loads(file_content)
+
+        # Validate and create FinancialProfile
+        profile = FinancialProfile(**data)
+
+        logger.info("Financial profile loaded successfully from JSON")
+        return profile
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON format: %s", str(e))
+        st.error(f"Invalid JSON format: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error("Failed to load profile from JSON: %s", str(e))
+        st.error(f"Failed to load profile: {str(e)}")
+        return None
 
 
 @st.cache_resource
-def initialize_agent(provider: str) -> ChatBotAgent:
+def initialize_chatbot(provider: str) -> ChatbotAgent:
     """
-    Initialize the financial chatbot agent with the selected provider.
+    Initialize the chatbot agent (pure conversation, no tools).
 
     Args:
         provider: The LLM provider to use
 
     Returns:
-        Initialized ChatBotAgent instance
+        Initialized ChatbotAgent instance
     """
-    logger.debug("Initializing agent with provider: %s", provider)
+    logger.debug("Initializing chatbot agent with provider: %s", provider)
 
     try:
-        agent = ChatBotAgent(provider=provider)
-        logger.info("Agent initialized successfully with provider: %s", provider)
+        # Use a more meaningful agent name
+        agent = ChatbotAgent(name="ChatbotAgent", provider=provider)
+        logger.info(
+            "Chatbot agent initialized successfully with provider: %s", provider
+        )
         return agent
     except Exception as e:
         logger.error(
-            "Failed to initialize agent with provider %s: %s",
+            "Failed to initialize chatbot agent with provider %s: %s",
+            provider,
+            str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@st.cache_resource
+def initialize_financial_advisor(
+    provider: str, name: Optional[str] = None
+) -> FinancialAdvisorAgent:
+    """
+    Initialize the financial advisor agent (with RAG and portfolio generation).
+
+    Args:
+        provider: The LLM provider to use
+
+    Returns:
+        Initialized FinancialAdvisorAgent instance
+    """
+    logger.debug("Initializing financial advisor agent with provider: %s", provider)
+
+    try:
+        agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
+        logger.info(
+            "Financial advisor agent '%s' initialized successfully with provider: %s",
+            agent.name,
+            provider,
+        )
+        return agent
+    except Exception as e:
+        logger.error(
+            "Failed to initialize financial advisor agent with provider %s: %s",
             provider,
             str(e),
             exc_info=True,
@@ -205,16 +230,165 @@ def stream_text(text: str, chunk_size: int = 20):
         time.sleep(0.1)  # 100ms delay between chunks for smooth typing effect
 
 
-def generate_portfolio_for_profile(agent, profile):
+def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
+    """
+    Fetch and display historical returns data for portfolio assets.
+
+    Args:
+        portfolio: The portfolio dictionary containing assets
+        financial_advisor_agent: The FinancialAdvisorAgent instance
+
+    Returns:
+        None (displays data using st components)
+    """
+    logger.debug("Fetching historical returns for portfolio assets")
+
+    # Collect returns data
+    returns_data = []
+
+    if "assets" in portfolio and isinstance(portfolio["assets"], list):
+        with st.spinner("🔄 Retrieving 10-year historical data for assets..."):
+            for asset in portfolio["assets"]:
+                asset_symbol = (
+                    asset.get("symbol") if isinstance(asset, dict) else asset.symbol
+                )
+                # asset_percentage = (
+                #     asset.get("percentage")
+                #     if isinstance(asset, dict)
+                #     else asset.percentage
+                # )
+
+                if asset_symbol:
+                    try:
+                        logger.debug("Fetching returns for asset: %s", asset_symbol)
+                        if asset_symbol.upper() == "BITCOIN":
+                            asset_symbol = "BTC-EUR"
+
+                        # Call advisor.analyze_asset to get structured asset data
+                        result_data = financial_advisor_agent.analyze_asset(
+                            asset_symbol, years=10
+                        )
+
+                        logger.debug(
+                            "Received data for %s: %s",
+                            asset_symbol,
+                            result_data,
+                        )
+
+                        if result_data.get("success"):
+                            logger.debug(
+                                "Successfully retrieved data for %s",
+                                asset_symbol,
+                            )
+                            logger.debug("Result data: %s", result_data)
+
+                            # Extract company name for display
+                            company_name = result_data.get("company_name", asset_symbol)
+
+                            # Extract returns
+                            returns = result_data.get("returns", [])
+
+                            # Helper function to get return for specific year
+                            def get_return_for_year(year_val):
+                                for ret in returns:
+                                    if ret.get("year") == year_val:
+                                        val = ret.get("percentage")
+                                        return (
+                                            f"{val:.2f}%"
+                                            if isinstance(val, (int, float))
+                                            else "N/A"
+                                        )
+                                return "N/A"
+
+                            returns_data.append(
+                                {
+                                    "Asset": f"{company_name} ({asset_symbol})",
+                                    # "Allocation %": asset_percentage,
+                                    "1-Year Return %": get_return_for_year(1),
+                                    "3-Year Return %": get_return_for_year(3),
+                                    "5-Year Return %": get_return_for_year(5),
+                                    "10-Year Return %": get_return_for_year(10),
+                                }
+                            )
+                        else:
+                            logger.warning(
+                                "Failed to retrieve data for %s: %s",
+                                asset_symbol,
+                                result_data.get("error"),
+                            )
+                            returns_data.append(
+                                {
+                                    "Asset": f"{asset_symbol} (Error)",
+                                    # "Allocation %": asset_percentage,
+                                    "1-Year Return %": "N/A",
+                                    "3-Year Return %": "N/A",
+                                    "5-Year Return %": "N/A",
+                                    "10-Year Return %": "N/A",
+                                }
+                            )
+
+                    except Exception as e:
+                        logger.error(
+                            "Error fetching returns for %s: %s",
+                            asset_symbol,
+                            str(e),
+                        )
+                        returns_data.append(
+                            {
+                                "Asset": f"{asset_symbol} (Error)",
+                                # "Allocation %": asset_percentage,
+                                "1-Year Return %": "N/A",
+                                "3-Year Return %": "N/A",
+                                "5-Year Return %": "N/A",
+                                "10-Year Return %": "N/A",
+                            }
+                        )
+
+    # Display returns table
+    if returns_data:
+        df_returns = pd.DataFrame(returns_data)
+        st.dataframe(df_returns, width="stretch", hide_index=True)
+        logger.info("Returns table displayed successfully")
+    else:
+        st.info("📌 Unable to retrieve historical data for assets in the portfolio.")
+
+
+def _display_key_considerations(portfolio):
+    """
+    Display key considerations from the portfolio.
+
+    Args:
+        portfolio: The portfolio dictionary containing key_considerations
+
+    Returns:
+        None (displays data using st components)
+    """
+    if "key_considerations" in portfolio and portfolio["key_considerations"]:
+        st.markdown("### 📋 Key Considerations")
+        # Handle list of considerations
+        if isinstance(portfolio["key_considerations"], list):
+            for consideration in portfolio["key_considerations"]:
+                if consideration:
+                    st.write(f"• {consideration}")
+        else:
+            # Fallback for string format (old structure)
+            considerations = portfolio["key_considerations"].split(";")
+            for consideration in considerations:
+                consideration = consideration.strip()
+                if consideration:
+                    st.write(f"• {consideration}")
+
+
+def _generate_portfolio_for_profile(advisor_agent, profile):
     """
     Generate a balanced portfolio for the given financial profile.
 
     Args:
-        agent: The ChatBotAgent instance
+        advisor_agent: The FinancialAdvisorAgent instance
         profile: The FinancialProfile object
 
     Returns:
-        The generated Portfolio object, or None if generation failed
+        The generated Portfolio dict, or None if generation failed
     """
     logger.info("Starting portfolio generation for profile")
 
@@ -224,13 +398,15 @@ def generate_portfolio_for_profile(agent, profile):
 
         logger.debug("Converting profile to dict for portfolio generation")
 
-        # Generate portfolio using RAG-enhanced agent with structured response
-        portfolio = agent.generate_balanced_portfolio(profile_dict)
+        # Generate portfolio using RAG-enhanced advisor agent with structured response
+        portfolio = advisor_agent.generate_balanced_portfolio(profile_dict)
 
         logger.info("Portfolio generated successfully")
         if portfolio:
-            assets_count = len(portfolio.assets) if hasattr(portfolio, "assets") else 0
-            risk = portfolio.risk_level if hasattr(portfolio, "risk_level") else None
+            assets_count = (
+                len(portfolio.get("assets", [])) if isinstance(portfolio, dict) else 0
+            )
+            risk = portfolio.get("risk_level") if isinstance(portfolio, dict) else None
             logger.debug(
                 "Portfolio structure: assets_count=%d, risk_level=%s",
                 assets_count,
@@ -245,184 +421,208 @@ def generate_portfolio_for_profile(agent, profile):
             str(portfolio_error),
             exc_info=True,
         )
-        st.error(f"❌ Failed to generate portfolio: {str(portfolio_error)}")
+        st.error(f"Failed to generate portfolio: {str(portfolio_error)}")
         return None
 
 
-def main():
-    """Main Streamlit application."""
-    logger.debug("Starting main Streamlit application")
+def _initialize_session_state():
+    """
+    Initialize all required session state variables.
 
-    # Initialize session state for provider selection
-    if "provider" not in st.session_state:
-        st.session_state.provider = None
-        logger.debug("Initialized provider session state to None")
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-        logger.debug("Initialized messages session state to empty list")
-    if "question_index" not in st.session_state:
-        st.session_state.question_index = 0
-        logger.debug("Initialized question_index session state to 0")
-    if "agent_initialized" not in st.session_state:
-        st.session_state.agent_initialized = False
-        logger.debug("Initialized agent_initialized session state to False")
-    if "conversation_completed" not in st.session_state:
-        st.session_state.conversation_completed = False
-        logger.debug("Initialized conversation_completed session state to False")
-    if "financial_profile" not in st.session_state:
-        st.session_state.financial_profile = None
-        logger.debug("Initialized financial_profile session state to None")
-    if "generated_portfolio" not in st.session_state:
-        st.session_state.generated_portfolio = None
-        logger.debug("Initialized generated_portfolio session state to None")
-    if "health_check_done" not in st.session_state:
-        st.session_state.health_check_done = False
-        logger.debug("Initialized health_check_done session state to False")
-    if "agent_is_healthy" not in st.session_state:
-        st.session_state.agent_is_healthy = False
-        logger.debug("Initialized agent_is_healthy session state to False")
+    Returns:
+        None (initializes st.session_state)
+    """
+    session_state_defaults = {
+        "provider": (None, "Initialized provider session state to None"),
+        "messages": ([], "Initialized messages session state to empty list"),
+        "question_index": (0, "Initialized question_index session state to 0"),
+        "agent_initialized": (
+            False,
+            "Initialized agent_initialized session state to False",
+        ),
+        "conversation_completed": (
+            False,
+            "Initialized conversation_completed session state to False",
+        ),
+        "financial_profile": (
+            None,
+            "Initialized financial_profile session state to None",
+        ),
+        "profile_loaded_from_json": (
+            False,
+            "Initialized profile_loaded_from_json session state to False",
+        ),
+        "health_check_done": (
+            False,
+            "Initialized health_check_done session state to False",
+        ),
+        "agent_is_healthy": (
+            False,
+            "Initialized agent_is_healthy session state to False",
+        ),
+    }
 
-    # Provider selection modal on first load
-    if st.session_state.provider is None:
-        logger.debug("No provider selected, showing provider selection modal")
+    for key, (default_value, debug_message) in session_state_defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+            logger.debug(debug_message)
 
-        st.title("💰 Financial AI Agent")
-        st.markdown("Your personal financial advisor powered by AI")
 
-        st.divider()
-        st.subheader("🔧 Select Your LLM Provider")
-        st.markdown(
-            "Choose which AI service to use for this conversation. You can change this anytime."
-        )
+def _show_provider_selection():
+    """
+    Display provider selection modal on first load.
 
-        col1, col2, col3 = st.columns(3)
+    Returns:
+        None (displays UI and returns if provider not selected)
+    """
+    logger.debug("No provider selected, showing provider selection modal")
 
-        available_providers = get_available_providers()
+    st.title("💰 Financial AI Agent")
+    st.markdown("Your personal financial advisor powered by AI")
 
-        with col1:
-            if "ollama" in available_providers:
-                if st.button("🦙 Ollama", use_container_width=True, key="ollama_btn"):
-                    logger.info("Ollama provider selected")
-                    st.session_state.provider = "ollama"
-                    st.session_state.agent_initialized = False
-                    st.rerun()
-            else:
-                st.button(
-                    "Ollama (Not Running)",
-                    disabled=True,
-                    use_container_width=True,
-                    help="Start Ollama with: ollama serve",
-                )
-
-        with col2:
-            if "google" in available_providers:
-                if st.button(
-                    "🌐 Google Gemini", use_container_width=True, key="google_btn"
-                ):
-                    logger.info("Google provider selected")
-                    st.session_state.provider = "google"
-                    st.session_state.agent_initialized = False
-                    st.rerun()
-            else:
-                st.button(
-                    "Google (Not Available)",
-                    disabled=True,
-                    use_container_width=True,
-                )
-
-        with col3:
-            if "openai" in available_providers:
-                if st.button("✨ OpenAI", use_container_width=True, key="openai_btn"):
-                    logger.info("OpenAI provider selected")
-                    st.session_state.provider = "openai"
-                    st.session_state.agent_initialized = False
-                    st.rerun()
-            else:
-                st.button(
-                    "OpenAI (Not Available)",
-                    disabled=True,
-                    use_container_width=True,
-                )
-
-        st.divider()
-        st.info(
-            "💡 **Tip:** Ollama is free and runs locally. "
-            "Install from [ollama.com](https://ollama.com/)"
-        )
-        return
-
-    # Show loading screen while initializing agent
-    if not st.session_state.agent_initialized:
-        logger.debug("Agent not yet initialized, showing loading screen")
-
-        st.title("💰 Financial AI Agent")
-        st.markdown("Your personal financial advisor powered by AI")
-
-        st.divider()
-
-        # Loading animation
-        loading_col1, loading_col2, loading_col3 = st.columns([1, 2, 1])
-        with loading_col2:
-            st.markdown(
-                """
-                <div style="text-align: center; padding: 4rem 2rem;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem; animation: spin 2s linear infinite;">⏳</div>
-                    <h3>Initializing your financial advisor...</h3>
-                    <p style="color: gray;">Please wait while we load your AI assistant.</p>
-                </div>
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        try:
-            logger.debug(
-                "Initializing agent for provider: %s", st.session_state.provider
-            )
-            agent = initialize_agent(st.session_state.provider)
-            logger.info("Agent initialized successfully")
-            st.session_state.agent_initialized = True
-            st.rerun()
-        except Exception as e:
-            logger.error("Failed to initialize agent: %s", str(e), exc_info=True)
-            st.error(f"Failed to initialize agent: {e}")
-            st.session_state.provider = None
-            st.session_state.agent_initialized = False
-            st.rerun()
-
-    # Provider has been selected and agent is initialized
-    logger.debug(
-        "Provider selected and agent initialized: %s", st.session_state.provider
+    st.divider()
+    st.subheader("🔧 Select Your LLM Provider")
+    st.markdown(
+        "Choose which AI service to use for this conversation. You can change this anytime."
     )
 
+    col1, col2, col3 = st.columns(3)
+    available_providers = get_available_providers()
+
+    with col1:
+        if "ollama" in available_providers:
+            if st.button("🦙 Ollama", use_container_width=True, key="ollama_btn"):
+                logger.info("Ollama provider selected")
+                st.session_state.provider = "ollama"
+                st.session_state.agent_initialized = False
+                st.rerun()
+        else:
+            st.button(
+                "Ollama (Not Running)",
+                disabled=True,
+                use_container_width=True,
+                help="Start Ollama with: ollama serve",
+            )
+
+    with col2:
+        if "google" in available_providers:
+            if st.button("🌐 Google Gemini", use_container_width=True, key="google_btn"):
+                logger.info("Google provider selected")
+                st.session_state.provider = "google"
+                st.session_state.agent_initialized = False
+                st.rerun()
+        else:
+            st.button(
+                "Google (Not Available)",
+                disabled=True,
+                use_container_width=True,
+            )
+
+    with col3:
+        if "openai" in available_providers:
+            if st.button("✨ OpenAI", use_container_width=True, key="openai_btn"):
+                logger.info("OpenAI provider selected")
+                st.session_state.provider = "openai"
+                st.session_state.agent_initialized = False
+                st.rerun()
+        else:
+            st.button(
+                "OpenAI (Not Available)",
+                disabled=True,
+                use_container_width=True,
+            )
+
+    st.divider()
+    st.info(
+        "💡 **Tip:** Ollama is free and runs locally. "
+        "Install from [ollama.com](https://ollama.com/)"
+    )
+
+
+def _show_loading_screen():
+    """
+    Display loading screen while initializing agent.
+
+    Returns:
+        None (displays UI with loading animation)
+    """
+    logger.debug("Agent not yet initialized, showing loading screen")
+
+    st.title("💰 Financial AI Agent")
+    st.markdown("Your personal financial advisor powered by AI")
+
+    st.divider()
+
+    # Loading animation
+    loading_col1, loading_col2, loading_col3 = st.columns([1, 2, 1])
+    with loading_col2:
+        st.markdown(
+            """
+            <div style="text-align: center; padding: 4rem 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem; animation: spin 2s linear infinite;">⏳</div>
+                <h3>Initializing your financial advisor...</h3>
+                <p style="color: gray;">Please wait while we load your AI assistant.</p>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def _initialize_agents():
+    """
+    Initialize chatbot and financial advisor agents.
+
+    Returns:
+        Tuple of (chatbot_agent, financial_advisor_agent) or reruns on error
+    """
     try:
-        logger.debug("Getting cached agent for provider: %s", st.session_state.provider)
-        agent = initialize_agent(st.session_state.provider)
-        logger.info("Agent retrieved successfully")
+        logger.debug(
+            "Initializing chatbot and financial advisor for provider: %s",
+            st.session_state.provider,
+        )
+        chatbot_agent = initialize_chatbot(st.session_state.provider)
+        financial_advisor_agent = initialize_financial_advisor(
+            st.session_state.provider
+        )
+        st.session_state["financial_advisor_agent"] = financial_advisor_agent
+        st.session_state["chatbot_agent"] = chatbot_agent
+        st.session_state.agent_initialized = True
+        logger.info("Agents initialized successfully")
+        return chatbot_agent, financial_advisor_agent
     except Exception as e:
-        logger.error("Failed to retrieve agent: %s", str(e), exc_info=True)
-        st.error(f"Failed to retrieve agent: {e}")
+        logger.error("Failed to initialize agents: %s", str(e), exc_info=True)
+        st.error(f"Failed to initialize agents: {e}")
         st.session_state.provider = None
         st.session_state.agent_initialized = False
         st.rerun()
 
-    # Header
-    st.title("💰 Financial AI Agent")
-    st.markdown("Your personal financial advisor powered by AI")
 
-    # Sidebar
+def _setup_sidebar(chatbot_agent, financial_advisor_agent):
+    """
+    Setup and display the sidebar with settings and controls.
+
+    Args:
+        chatbot_agent: The ChatbotAgent instance
+        financial_advisor_agent: The FinancialAdvisorAgent instance
+
+    Returns:
+        None (displays sidebar UI)
+    """
     with st.sidebar:
         st.header("⚙️ Settings")
 
         # Provider info - health check only once
         if not st.session_state.health_check_done:
             logger.debug("Performing health check for the first time")
-            st.session_state.agent_is_healthy = agent.is_healthy()
+            st.session_state.agent_is_healthy = (
+                chatbot_agent.is_healthy() and financial_advisor_agent.is_healthy()
+            )
             st.session_state.health_check_done = True
             logger.debug(
                 "Health check completed: %s", st.session_state.agent_is_healthy
@@ -430,10 +630,10 @@ def main():
 
         if st.session_state.agent_is_healthy:
             logger.debug("Agent health check passed")
-            st.success("✅ Agent initialized!")
+            st.success("Agents initialized!")
         else:
             logger.warning("Agent health check failed")
-            st.warning("⚠️ Agent running but connection may be unstable")
+            st.warning("⚠️ Agents running but connection may be unstable")
 
         # Change provider
         if st.button("🔄 Change Provider", use_container_width=True):
@@ -446,13 +646,14 @@ def main():
             st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
+            st.session_state.profile_loaded_from_json = False
             st.rerun()
 
         # Clear history button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
             logger.debug("Clearing conversation history")
-            agent.clear_memory()
-            agent.reset_questions()
+            chatbot_agent.clear_memory()
+            chatbot_agent.reset_questions()
             st.session_state.messages = []
             st.session_state.question_index = 0
             st.session_state.conversation_completed = False
@@ -460,29 +661,37 @@ def main():
             st.session_state.generated_portfolio = None
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
+            st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
 
-        # Test with demo profile button
-        if st.button("🧪 Load Test Profile", use_container_width=True):
-            logger.info("Loading test financial profile")
-            test_profile = get_test_financial_profile()
-            st.session_state.financial_profile = test_profile
-            st.session_state.conversation_completed = True
+        # Upload custom profile from JSON
+        st.divider()
+        st.subheader("📤 Load Custom Profile")
+        uploaded_json = st.file_uploader(
+            "Upload a financial profile JSON file",
+            type=["json"],
+            help="Upload a JSON file with your financial profile data",
+        )
 
-            # Generate portfolio automatically
-            logger.info("Auto-generating portfolio for test profile")
-            portfolio = generate_portfolio_for_profile(agent, test_profile)
-            if portfolio:
-                st.session_state.generated_portfolio = portfolio
-                logger.info("Portfolio auto-generated successfully")
+        if uploaded_json is not None and not st.session_state.profile_loaded_from_json:
+            logger.debug("JSON file uploaded: %s", uploaded_json.name)
+            profile = load_profile_from_json(uploaded_json)
 
-            st.success("✅ Test profile loaded with auto-generated portfolio!")
-            st.rerun()
+            if profile:
+                st.session_state.financial_profile = profile
+                st.session_state.conversation_completed = True
+                st.session_state.generated_portfolio = None
+                st.session_state.profile_loaded_from_json = True
+                logger.info(
+                    "Profile loaded successfully, auto-generation will happen in display section"
+                )
+                st.success("Profile loaded successfully!")
+                st.rerun()
 
         # Model info
         st.divider()
         st.subheader("📊 Model Information")
-        config = agent.get_config_summary()
+        config = chatbot_agent.get_config_summary()
         st.write(f"**Provider:** {config['provider'].upper()}")
         st.write(f"**Model:** {config['model']}")
         st.write(f"**Agent:** {config['name']}")
@@ -491,12 +700,184 @@ def main():
         # Progress info
         st.divider()
         st.subheader("📋 Assessment Progress")
-        progress = agent.get_questions_progress()
+        progress = chatbot_agent.get_questions_progress()
         st.write(
             f"**Question {progress['current_index'] + 1} of {progress['total_questions']}**"
         )
         st.progress(progress["progress_percentage"] / 100)
         logger.debug("Progress displayed: %s", progress)
+
+
+def _display_financial_profile_summary():
+    """
+    Display the financial profile summary information.
+
+    Returns:
+        None (displays UI components)
+    """
+    if st.session_state.financial_profile:
+        logger.debug("Displaying extracted financial profile")
+        st.divider()
+        st.subheader("📊 Financial Profile Summary")
+
+        # Convert profile to dictionary for display
+        profile_dict = st.session_state.financial_profile.model_dump()
+
+        # Create DataFrame for table (excluding summary_notes)
+        table_data = {}
+        for key, value in profile_dict.items():
+            if key == "summary_notes":  # Skip summary_notes for table
+                continue
+            # Format key for display (snake_case to Title Case)
+            display_key = key.replace("_", " ").title()
+            # Format value
+            display_value = value if value is not None else "N/A"
+            table_data[display_key] = [str(display_value)]
+
+        # Convert to DataFrame and display as table
+        df = pd.DataFrame(table_data, index=["Data"]).T
+        st.table(df)
+
+        # Display summary notes separately below table
+        if profile_dict.get("summary_notes"):
+            st.markdown("**📝 Summary Notes**")
+            st.write(profile_dict["summary_notes"])
+
+        # Display JSON download option
+        st.download_button(
+            label="📥 Download Financial Profile (JSON)",
+            data=st.session_state.financial_profile.model_dump_json(indent=2),
+            file_name="financial_profile.json",
+            mime="application/json",
+            key="download_profile",
+        )
+
+
+def _display_portfolio_details(portfolio, financial_advisor_agent):
+    """
+    Display all portfolio details including allocation, strategy, risk level, and returns.
+
+    Args:
+        portfolio: The portfolio dictionary
+        financial_advisor_agent: The FinancialAdvisorAgent instance
+
+    Returns:
+        None (displays UI components)
+    """
+    logger.debug("Displaying generated portfolio")
+
+    # Display portfolio allocation
+    st.markdown("### 📈 Portfolio Allocation")
+
+    # Helper function to display asset
+    def display_asset(asset_name, percentage, justification):
+        if asset_name and percentage:
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.metric(asset_name, f"{percentage}%")
+            with col2:
+                st.caption(justification if justification else "")
+
+    # Display all assets from the portfolio (new structure with nested assets)
+    if "assets" in portfolio and isinstance(portfolio["assets"], list):
+        for asset in portfolio["assets"]:
+            display_asset(
+                asset.get("symbol") if isinstance(asset, dict) else asset.symbol,
+                asset.get("percentage")
+                if isinstance(asset, dict)
+                else asset.percentage,
+                asset.get("justification")
+                if isinstance(asset, dict)
+                else asset.justification,
+            )
+
+    # Display overall strategy reasoning
+    if "portfolio_reasoning" in portfolio:
+        st.markdown("### 🎯 Investment Strategy")
+        st.info(portfolio["portfolio_reasoning"])
+
+    # Display risk level
+    if "risk_level" in portfolio:
+        # Extract the value from the risk_level (could be enum or string)
+        risk_value = portfolio["risk_level"]
+        if isinstance(risk_value, str):
+            risk_level = risk_value.upper()
+        else:
+            # Handle enum or other types
+            risk_level = str(risk_value).replace("RiskLevel.", "").upper()
+
+        if risk_level == "CONSERVATIVE":
+            st.success(f"**Risk Level**: 🛡️ {risk_level}")
+        elif risk_level == "MODERATE":
+            st.info(f"**Risk Level**: ⚖️ {risk_level}")
+        else:
+            st.warning(f"**Risk Level**: ⚡ {risk_level}")
+
+    # Display rebalancing schedule
+    if "rebalancing_schedule" in portfolio:
+        st.markdown(f"**Rebalancing Schedule**: {portfolio['rebalancing_schedule']}")
+
+    # Display key considerations
+    _display_key_considerations(portfolio)
+
+    # Display historical returns for assets
+    st.markdown("### 📊 Historical Returns (Last 10 Years)")
+    _fetch_and_display_historical_returns(portfolio, financial_advisor_agent)
+    logger.info("Portfolio display completed")
+
+
+def main():
+    """Main Streamlit application."""
+    logger.debug("Starting main Streamlit application")
+
+    # Initialize session state
+    _initialize_session_state()
+
+    # Provider selection modal on first load
+    if st.session_state.provider is None:
+        _show_provider_selection()
+        return
+
+    # Show loading screen while initializing agent
+    if not st.session_state.agent_initialized:
+        _show_loading_screen()
+        chatbot_agent, financial_advisor_agent = _initialize_agents()
+        st.rerun()
+
+    # Provider has been selected and agent is initialized
+    logger.debug(
+        "Provider selected and agent initialized: %s", st.session_state.provider
+    )
+
+    try:
+        logger.debug(
+            "Retrieving cached chatbot and financial advisor for provider: %s",
+            st.session_state.provider,
+        )
+        # Prefer stored instances in session_state to avoid re-initialization
+        chatbot_agent = st.session_state.get("chatbot_agent") or initialize_chatbot(
+            st.session_state.provider
+        )
+        financial_advisor_agent = st.session_state.get(
+            "financial_advisor_agent"
+        ) or initialize_financial_advisor(st.session_state.provider)
+        # Ensure session_state holds the instances
+        st.session_state["chatbot_agent"] = chatbot_agent
+        st.session_state["financial_advisor_agent"] = financial_advisor_agent
+        logger.info("Agents retrieved successfully")
+    except Exception as e:
+        logger.error("Failed to retrieve agent: %s", str(e), exc_info=True)
+        st.error(f"Failed to retrieve agent: {e}")
+        st.session_state.provider = None
+        st.session_state.agent_initialized = False
+        st.rerun()
+
+    # Header
+    st.title("💰 Financial AI Agent")
+    st.markdown("Your personal financial advisor powered by AI")
+
+    # Sidebar
+    _setup_sidebar(chatbot_agent, financial_advisor_agent)
 
     # Send welcome message on first load
     if len(st.session_state.messages) == 0:
@@ -504,19 +885,21 @@ def main():
 
         try:
             # Get the first question (without advancing yet - we're at index 0)
-            first_question = agent.get_current_question()
-            logger.debug("First question: %s", first_question[:200])
+            first_question = chatbot_agent.get_current_question()
+            logger.debug("First question: %s", first_question)
 
             # Format the welcome prompt template
-            welcome_prompt = agent.welcome_prompt.format(first_question=first_question)
+            welcome_prompt = chatbot_agent.welcome_prompt.format(
+                first_question=first_question
+            )
 
-            welcome_message = agent.chat(welcome_prompt)
+            welcome_message = chatbot_agent.chat(welcome_prompt)
             st.session_state.messages.append(
                 {"role": "assistant", "content": welcome_message}
             )
 
             # Now advance to the next question index for the first user response
-            agent.advance_to_next_question()
+            chatbot_agent.advance_to_next_question()
             logger.debug("Welcome message sent, advanced to question index 1")
         except Exception as e:
             logger.error(
@@ -533,49 +916,15 @@ def main():
     if st.session_state.conversation_completed:
         logger.debug("Conversation is completed, showing completion message")
         st.info(
-            "✅ **Assessment completed!** All your financial questions have been answered and the summary has been provided. "
+            "**Assessment completed!** All your financial questions have been answered and the summary has been provided. "
             "Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over."
         )
 
-        # Display financial profile if available
+        # Display financial profile
+        _display_financial_profile_summary()
+
+        # Generate and display portfolio
         if st.session_state.financial_profile:
-            logger.debug("Displaying extracted financial profile")
-            st.divider()
-            st.subheader("📊 Financial Profile Summary")
-
-            # Convert profile to dictionary for display
-            profile_dict = st.session_state.financial_profile.model_dump()
-
-            # Create DataFrame for table (excluding summary_notes)
-            table_data = {}
-            for key, value in profile_dict.items():
-                if key == "summary_notes":  # Skip summary_notes for table
-                    continue
-                # Format key for display (snake_case to Title Case)
-                display_key = key.replace("_", " ").title()
-                # Format value
-                display_value = value if value is not None else "N/A"
-                table_data[display_key] = [str(display_value)]
-
-            # Convert to DataFrame and display as table
-            df = pd.DataFrame(table_data, index=["Data"]).T
-            st.table(df)
-
-            # Display summary notes separately below table
-            if profile_dict.get("summary_notes"):
-                st.markdown("**📝 Summary Notes**")
-                st.write(profile_dict["summary_notes"])
-
-            # Display JSON download option
-            st.download_button(
-                label="📥 Download Financial Profile (JSON)",
-                data=st.session_state.financial_profile.model_dump_json(indent=2),
-                file_name="financial_profile.json",
-                mime="application/json",
-                key="download_profile",
-            )
-
-            # Generate balanced portfolio based on profile
             st.divider()
             st.subheader("💼 AI-Generated Portfolio Recommendation")
 
@@ -590,8 +939,8 @@ def main():
                 with st.spinner(
                     "🔄 Analyzing profile and retrieving relevant ETF assets..."
                 ):
-                    portfolio = generate_portfolio_for_profile(
-                        agent, st.session_state.financial_profile
+                    portfolio = _generate_portfolio_for_profile(
+                        financial_advisor_agent, st.session_state.financial_profile
                     )
                     if portfolio:
                         st.session_state.generated_portfolio = portfolio
@@ -600,14 +949,15 @@ def main():
                     else:
                         logger.warning("Failed to generate portfolio")
                         st.error(
-                            "❌ Could not auto-generate portfolio. Try clicking the button below."
+                            "Could not auto-generate portfolio. Try clicking the button below."
                         )
                         if st.button(
                             "Generate Portfolio with RAG", key="generate_portfolio"
                         ):
                             logger.info("Portfolio generation requested manually")
-                            portfolio = generate_portfolio_for_profile(
-                                agent, st.session_state.financial_profile
+                            portfolio = _generate_portfolio_for_profile(
+                                financial_advisor_agent,
+                                st.session_state.financial_profile,
                             )
                             if portfolio:
                                 st.session_state.generated_portfolio = portfolio
@@ -620,85 +970,9 @@ def main():
                 "generated_portfolio" in st.session_state
                 and st.session_state.generated_portfolio
             ):
-                portfolio = st.session_state.generated_portfolio
-
-                logger.debug("Displaying generated portfolio")
-
-                # Display portfolio allocation
-                st.markdown("### 📈 Portfolio Allocation")
-
-                # Helper function to display asset
-                def display_asset(asset_name, percentage, justification):
-                    if asset_name and percentage:
-                        col1, col2 = st.columns([1, 3])
-                        with col1:
-                            st.metric(asset_name, f"{percentage}%")
-                        with col2:
-                            st.caption(justification if justification else "")
-
-                # Display all assets from the portfolio (new structure with nested assets)
-                if "assets" in portfolio and isinstance(portfolio["assets"], list):
-                    for asset in portfolio["assets"]:
-                        display_asset(
-                            asset.get("symbol")
-                            if isinstance(asset, dict)
-                            else asset.symbol,
-                            asset.get("percentage")
-                            if isinstance(asset, dict)
-                            else asset.percentage,
-                            asset.get("justification")
-                            if isinstance(asset, dict)
-                            else asset.justification,
-                        )
-
-                # Display overall strategy reasoning
-                if "portfolio_reasoning" in portfolio:
-                    st.markdown("### 🎯 Investment Strategy")
-                    st.info(portfolio["portfolio_reasoning"])
-
-                # Display risk level
-                if "risk_level" in portfolio:
-                    # Extract the value from the risk_level (could be enum or string)
-                    risk_value = portfolio["risk_level"]
-                    if isinstance(risk_value, str):
-                        risk_level = risk_value.upper()
-                    else:
-                        # Handle enum or other types
-                        risk_level = str(risk_value).replace("RiskLevel.", "").upper()
-
-                    if risk_level == "CONSERVATIVE":
-                        st.success(f"**Risk Level**: 🛡️ {risk_level}")
-                    elif risk_level == "MODERATE":
-                        st.info(f"**Risk Level**: ⚖️ {risk_level}")
-                    else:
-                        st.warning(f"**Risk Level**: ⚡ {risk_level}")
-
-                # Display rebalancing schedule
-                if "rebalancing_schedule" in portfolio:
-                    st.markdown(
-                        f"**Rebalancing Schedule**: {portfolio['rebalancing_schedule']}"
-                    )
-
-                # Display key considerations
-                if (
-                    "key_considerations" in portfolio
-                    and portfolio["key_considerations"]
-                ):
-                    st.markdown("### 📋 Key Considerations")
-                    # Handle list of considerations
-                    if isinstance(portfolio["key_considerations"], list):
-                        for consideration in portfolio["key_considerations"]:
-                            if consideration:
-                                st.write(f"• {consideration}")
-                    else:
-                        # Fallback for string format (old structure)
-                        considerations = portfolio["key_considerations"].split(";")
-                        for consideration in considerations:
-                            consideration = consideration.strip()
-                            if consideration:
-                                st.write(f"• {consideration}")
-
-                logger.info("Portfolio display completed")
+                _display_portfolio_details(
+                    st.session_state.generated_portfolio, financial_advisor_agent
+                )
 
         else:
             logger.debug("No financial profile available to display")
@@ -721,31 +995,33 @@ def main():
                         logger.debug("Getting response from agent")
                         logger.debug(
                             "Current question index before advance: %d",
-                            agent.current_question_index,
+                            chatbot_agent.current_question_index,
                         )
 
-                        # Check if there are more questions AFTER this one
-                        has_more_questions = agent.advance_to_next_question()
+                        # Check if there are more questions after this one
+                        has_more_questions = chatbot_agent.advance_to_next_question()
                         logger.debug(
                             "After advance - has_more_questions: %s, current_index: %d",
                             has_more_questions,
-                            agent.current_question_index,
+                            chatbot_agent.current_question_index,
                         )
 
                         if has_more_questions:
                             # There are more questions to ask
-                            next_question = agent.get_current_question()
+                            next_question = chatbot_agent.get_current_question()
                             logger.debug(
                                 "Next question available: %s", next_question[:50]
                             )
 
                             # Format the acknowledge and ask prompt template
-                            response_prompt = agent.acknowledge_and_ask_prompt.format(
-                                user_answer=prompt, next_question=next_question
+                            response_prompt = (
+                                chatbot_agent.acknowledge_and_ask_prompt.format(
+                                    user_answer=prompt, next_question=next_question
+                                )
                             )
 
                             # Get response from agent
-                            response_text = agent.chat(response_prompt)
+                            response_text = chatbot_agent.chat(response_prompt)
                             logger.debug(
                                 "Response generated, length: %d", len(response_text)
                             )
@@ -778,22 +1054,36 @@ def main():
                             )
 
                             # Format the summary prompt with the conversation history
-                            summary_prompt = agent.summary_prompt.format(
+                            summary_prompt = chatbot_agent.summary_prompt.format(
                                 user_answer=prompt,
                                 conversation_history=conversation_history,
                             )
-                            response_text = agent.chat(summary_prompt)
+                            response_text = chatbot_agent.chat(summary_prompt)
                             logger.debug(
                                 "Final summary generated, length: %d",
                                 len(response_text),
                             )
                             logger.info("All questions completed, summary provided")
 
-                            # Extract structured financial profile
-                            logger.debug("Extracting structured financial profile")
+                            # Extract structured financial profile using financial advisor
+                            logger.debug(
+                                "Extracting structured financial profile using financial advisor"
+                            )
                             try:
-                                financial_profile = agent.extract_financial_profile(
-                                    response_text
+                                # Ensure financial advisor instance is available
+                                financial_advisor_agent = st.session_state.get(
+                                    "financial_advisor_agent"
+                                ) or initialize_financial_advisor(
+                                    st.session_state.provider
+                                )
+                                st.session_state[
+                                    "financial_advisor_agent"
+                                ] = financial_advisor_agent
+
+                                financial_profile = (
+                                    financial_advisor_agent.extract_financial_profile(
+                                        response_text
+                                    )
                                 )
                                 logger.info("Financial profile extracted successfully")
 
@@ -822,7 +1112,7 @@ def main():
                     logger.error(
                         "Error processing user input: %s", str(e), exc_info=True
                     )
-                    error_msg = f"❌ Error: {str(e)}"
+                    error_msg = f"Error: {str(e)}"
                     st.error(error_msg)
                     st.session_state.messages.append(
                         {"role": "assistant", "content": error_msg}
