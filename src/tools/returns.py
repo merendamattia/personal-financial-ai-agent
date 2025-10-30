@@ -11,12 +11,14 @@ from typing import Any, Dict, List
 
 from datapizza.tools import tool
 
+from src.models.tools import CalculateReturnsResponse, ReturnsMetrics
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
 @tool
-def calculate_returns(prices: str) -> Dict[str, Any]:
+def calculate_returns(prices: str) -> CalculateReturnsResponse:
     """
     Calculates various return metrics from a list of historical prices.
 
@@ -41,40 +43,28 @@ def calculate_returns(prices: str) -> Dict[str, Any]:
                 Typically generated from get_historical_prices()
 
     Returns:
-        dict: Contains:
-            - 'success': bool indicating if calculation was successful
-            - 'total_data_points': number of prices in the input
-            - 'date_range': dict with 'start' and 'end' dates
-            - 'years_available': total years of data available
-            - 'returns': dict with calculated returns for different periods
-              - '1_year': 1-year return (%)
-              - '3_year': 3-year annualized return (%)
-              - '5_year': 5-year annualized return (%)
-              - '7_year': 7-year annualized return (%)
-              - '10_year': 10-year annualized return (%)
-              - '15_year': 15-year annualized return (%)
-              - '20_year': 20-year annualized return (%)
-              - 'total_return': total return from start to end (%)
-            - 'error': error message if unsuccessful
+        CalculateReturnsResponse: Structured response containing:
+            - success: bool indicating if calculation was successful
+            - returns: ReturnsMetrics object with calculated returns
+            - total_data_points: number of prices in the input
+            - date_range: dict with 'start' and 'end' dates
+            - years_available: total years of data available
+            - error: error message if unsuccessful
 
     Example:
         >>> calculate_returns('[{"date": "2015-01-02", "close_price": 45.23}, ...]')
-        {
-            'success': True,
-            'total_data_points': 2516,
-            'date_range': {'start': '2015-01-02', 'end': '2025-10-30'},
-            'years_available': 10.8,
-            'returns': {
-                '1_year': 12.45,
-                '3_year': 8.32,
-                '5_year': 7.15,
-                '7_year': 6.95,
-                '10_year': 6.89,
-                '15_year': 'N/A',
-                '20_year': 'N/A',
-                'total_return': 125.67
-            }
-        }
+        CalculateReturnsResponse(
+            success=True,
+            total_data_points=2516,
+            date_range={'start': '2015-01-02', 'end': '2025-10-30'},
+            years_available=10.8,
+            returns=ReturnsMetrics(
+                one_year=12.45,
+                three_year=8.32,
+                five_year=7.15,
+                ...
+            )
+        )
     """
     logger.info("Calculating returns from price data")
 
@@ -85,12 +75,17 @@ def calculate_returns(prices: str) -> Dict[str, Any]:
         else:
             prices_list = prices
 
+        logger.info("Received %d prices", len(prices_list) if prices_list else 0)
+        if prices_list:
+            logger.debug("First price: %s", prices_list[0])
+            logger.debug("Last price: %s", prices_list[-1])
+
         if not prices_list or len(prices_list) < 2:
             logger.warning("Insufficient data points for return calculation")
-            return {
-                "success": False,
-                "error": "At least 2 price points required for return calculation",
-            }
+            return CalculateReturnsResponse(
+                success=False,
+                error="At least 2 price points required for return calculation",
+            )
 
         # Sort prices by date to ensure correct order
         sorted_prices = sorted(prices_list, key=lambda x: x["date"])
@@ -136,9 +131,21 @@ def calculate_returns(prices: str) -> Dict[str, Any]:
 
         # Periods to calculate (in years)
         periods = [1, 3, 5, 7, 10, 15, 20]
-        returns_dict = {}
+
+        # Initialize ReturnsMetrics
+        returns_metrics = ReturnsMetrics()
 
         # Calculate returns for each period
+        period_mapping = {
+            1: "one_year",
+            3: "three_year",
+            5: "five_year",
+            7: "seven_year",
+            10: "ten_year",
+            15: "fifteen_year",
+            20: "twenty_year",
+        }
+
         for period in periods:
             target_date = last_date - timedelta(days=period * 365)
             period_price = get_price_at_date(target_date)
@@ -151,36 +158,37 @@ def calculate_returns(prices: str) -> Dict[str, Any]:
                     # Annualized return for periods > 1 year
                     period_return = calculate_cagr(period_price, last_price, period)
 
-                returns_dict[f"{period}_year"] = (
+                rounded_return = (
                     round(period_return, 2) if period_return is not None else "N/A"
                 )
+                setattr(returns_metrics, period_mapping[period], rounded_return)
                 logger.debug(
                     "%d-year return: %.2f%%",
                     period,
-                    returns_dict[f"{period}_year"]
-                    if isinstance(returns_dict[f"{period}_year"], (int, float))
+                    rounded_return
+                    if isinstance(rounded_return, (int, float))
                     else None,
                 )
             else:
-                returns_dict[f"{period}_year"] = "N/A"
+                setattr(returns_metrics, period_mapping[period], "N/A")
                 logger.debug("%d-year: insufficient data", period)
 
-        # Add total return
-        returns_dict["total_return"] = round(total_return, 2)
+        # Set total return
+        returns_metrics.total_return = round(total_return, 2)
 
         logger.info("Returns calculated successfully")
 
-        return {
-            "success": True,
-            "total_data_points": len(prices_list),
-            "date_range": {"start": dates[0], "end": dates[-1]},
-            "years_available": round(total_years, 2),
-            "returns": returns_dict,
-        }
+        return CalculateReturnsResponse(
+            success=True,
+            returns=returns_metrics,
+            total_data_points=len(prices_list),
+            date_range={"start": dates[0], "end": dates[-1]},
+            years_available=round(total_years, 2),
+        )
 
     except Exception as e:
         logger.error("Error calculating returns: %s", str(e), exc_info=True)
-        return {
-            "success": False,
-            "error": f"Failed to calculate returns: {str(e)}",
-        }
+        return CalculateReturnsResponse(
+            success=False,
+            error=f"Failed to calculate returns: {str(e)}",
+        )

@@ -10,12 +10,14 @@ from typing import Any, Dict
 import yfinance as yf
 from datapizza.tools import tool
 
+from src.models.tools import SymbolResolution
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
 @tool
-def search_and_resolve_symbol(symbol: str) -> Dict[str, Any]:
+def search_and_resolve_symbol(symbol: str) -> SymbolResolution:
     """
     Searches for the correct ticker symbol when given an invalid or partial symbol.
 
@@ -29,15 +31,14 @@ def search_and_resolve_symbol(symbol: str) -> Dict[str, Any]:
         symbol: The ticker symbol to search for (e.g., 'SWDA', 'AAPL', 'BND')
 
     Returns:
-        dict: Contains:
-            - 'success': bool indicating if a symbol was resolved
-            - 'original_symbol': the input symbol that was searched
-            - 'found_symbol': the correct ticker symbol found
-            - 'company_name': the name of the company/fund
-            - 'symbol_type': type of asset (Stock, ETF, Fund, etc.)
-            - 'currency': the currency in which the asset trades
-            - 'exchange': the exchange where it trades
-            - 'error': error message if unsuccessful
+        SymbolResolution: Structured response containing:
+            - success: bool indicating if a symbol was resolved
+            - found_symbol: the correct ticker symbol found
+            - company_name: the name of the company/fund
+            - symbol_type: type of asset (Stock, ETF, Fund, etc.)
+            - currency: the currency in which the asset trades
+            - exchange: the exchange where it trades
+            - error: error message if unsuccessful
     """
     logger.info("Searching for symbol: %s", symbol)
 
@@ -74,34 +75,30 @@ def search_and_resolve_symbol(symbol: str) -> Dict[str, Any]:
                     logger.info(
                         "Found symbol variant: %s for input: %s", variant, symbol
                     )
-                    return {
-                        "success": True,
-                        "original_symbol": symbol,
-                        "found_symbol": variant,
-                        "company_name": info_variant.get(
+                    return SymbolResolution(
+                        success=True,
+                        found_symbol=variant,
+                        company_name=info_variant.get(
                             "longName", info_variant.get("shortName", "Unknown")
                         ),
-                        "symbol_type": info_variant.get("quoteType", "Unknown"),
-                        "currency": info_variant.get("currency", "Unknown"),
-                        "exchange": info_variant.get("exchange", "Unknown"),
-                    }
+                        symbol_type=info_variant.get("quoteType", "Unknown"),
+                        currency=info_variant.get("currency", "Unknown"),
+                        exchange=info_variant.get("exchange", "Unknown"),
+                    )
             except Exception as e:
                 logger.debug("Variant %s failed: %s", variant, str(e))
                 continue
 
         # If no variants worked, return error with suggestions
         logger.warning("No valid symbol found for: %s", symbol)
-        return {
-            "success": False,
-            "original_symbol": symbol,
-            "error": f"Symbol '{symbol}' not found. Please verify the ticker symbol.",
-            "tried_variants": variations,
-        }
+        return SymbolResolution(
+            success=False,
+            error=f"Symbol '{symbol}' not found. Please verify the ticker symbol.",
+        )
 
     except Exception as e:
         logger.error("Error searching for symbol %s: %s", symbol, str(e))
-        return {
-            "success": False,
-            "original_symbol": symbol,
-            "error": f"Failed to search for symbol {symbol}: {str(e)}",
-        }
+        return SymbolResolution(
+            success=False,
+            error=f"Failed to search for symbol {symbol}: {str(e)}",
+        )
