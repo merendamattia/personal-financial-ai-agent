@@ -102,7 +102,7 @@ class FinancialAdvisorAgent(BaseAgent):
         Get default max steps for FinancialAdvisorAgent.
 
         Returns:
-            Max steps: 1
+            Max steps: 3
         """
         return 3
 
