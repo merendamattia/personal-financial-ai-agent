@@ -13,7 +13,7 @@ from typing import Any, Dict, Union
 import yfinance as yf
 from datapizza.tools import tool
 
-from src.models.tools import SymbolResolution
+from src.models.tools import FinancialAnalysisResponse, SymbolResolution, YearReturn
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
     1. Resolving the ticker symbol across global exchanges
     2. Retrieving all available historical price data
     3. Calculating returns for 1, 2, 3, 4, and 5 years (or specified years)
-    4. Returning a formatted summary with all key metrics
+    4. Returning a structured JSON response with all key metrics
 
     Args:
         ticker: The stock/ETF ticker symbol (e.g., 'SWDA', 'AAPL', 'BND')
@@ -36,25 +36,18 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
                for each year from 1 to the specified number of years.
 
     Returns:
-        str: A formatted analysis summary containing:
-            - Symbol resolution status
-            - Historical data period
-            - Returns for each year analyzed (e.g., 1yr: X%, 2yr: Y%, etc.)
-            - Total return over the period
-            - Any errors encountered
-
-    Example:
-        >>> analyze_financial_asset('SWDA', years=5)
-        "✅ Analysis for SWDA (SWDA.MI) from 2020-11-02 to 2025-10-30 (5.0 years)
-
-        Returns:
-        - 1 Year: 12.45%
-        - 2 Years: 8.92% (annualized)
-        - 3 Years: 8.32% (annualized)
-        - 4 Years: 7.85% (annualized)
-        - 5 Years: 7.15% (annualized)
-
-        Total Return: 45.32%"
+        str: A JSON string containing the analysis response with:
+            - success: Whether analysis succeeded
+            - ticker: Original ticker
+            - resolved_symbol: Resolved symbol with exchange
+            - company_name: Company/fund name
+            - start_date: Data start date
+            - end_date: Data end date
+            - years_available: Years of data available
+            - data_points: Number of trading days
+            - returns: Dict of returns for each year
+            - total_return: Total return percentage
+            - error: Error message if unsuccessful
     """
     try:
         logger.info("Starting analysis for %s with %d years", ticker, years)
@@ -64,7 +57,10 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
         if not symbol_resolution.success:
             error_msg = symbol_resolution.error or f"Could not resolve symbol: {ticker}"
             logger.error(error_msg)
-            return f"Error: {error_msg}"
+            response = FinancialAnalysisResponse(
+                success=False, ticker=ticker, error=error_msg
+            )
+            return response.model_dump_json()
 
         resolved_symbol = symbol_resolution.found_symbol
         company_name = symbol_resolution.company_name
@@ -75,7 +71,13 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
         if not prices_response["success"]:
             error_msg = prices_response.get("error", "Failed to retrieve prices")
             logger.error(error_msg)
-            return f"Error: {error_msg}"
+            response = FinancialAnalysisResponse(
+                success=False,
+                ticker=ticker,
+                resolved_symbol=resolved_symbol,
+                error=error_msg,
+            )
+            return response.model_dump_json()
 
         prices_list = prices_response["prices"]
         data_points = prices_response["data_points"]
@@ -96,15 +98,33 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
         if not returns_response["success"]:
             error_msg = returns_response.get("error", "Failed to calculate returns")
             logger.error(error_msg)
-            return f"Error: {error_msg}"
+            response = FinancialAnalysisResponse(
+                success=False,
+                ticker=ticker,
+                resolved_symbol=resolved_symbol,
+                company_name=company_name,
+                error=error_msg,
+            )
+            return response.model_dump_json()
 
         returns_data = returns_response["returns"]
         total_return = returns_response["total_return"]
 
         logger.info("Returns calculated successfully")
 
-        # Step 4: Format and return the analysis
-        analysis = _format_analysis(
+        # Convert returns dict to array of YearReturn objects
+        returns_array = []
+        for year_key, value in returns_data.items():
+            # Extract year number from key like "1_year", "2_year", etc.
+            year = int(year_key.split("_")[0])
+            returns_array.append(YearReturn(year=year, percentage=value))
+
+        # Sort by year
+        returns_array.sort(key=lambda x: x.year)
+
+        # Step 4: Build and return the structured response as JSON
+        response = FinancialAnalysisResponse(
+            success=True,
             ticker=ticker,
             resolved_symbol=resolved_symbol,
             company_name=company_name,
@@ -112,22 +132,19 @@ def analyze_financial_asset(ticker: str, years: int = 5) -> str:
             end_date=end_date,
             years_available=years_available,
             data_points=data_points,
-            returns=returns_data,
+            returns=returns_array,
             total_return=total_return,
-            years_requested=years,
         )
 
         logger.info("Analysis completed successfully")
-        return analysis
+        return response.model_dump_json()
 
     except Exception as e:
         logger.error("Error during analysis: %s", str(e), exc_info=True)
-        return f"Error during analysis: {str(e)}"
-
-
-# ============================================================================
-# Private helper functions
-# ============================================================================
+        response = FinancialAnalysisResponse(
+            success=False, ticker=ticker, error=f"Error during analysis: {str(e)}"
+        )
+        return response.model_dump_json()
 
 
 def _search_and_resolve_symbol(symbol: str) -> SymbolResolution:
@@ -392,63 +409,3 @@ def _calculate_returns_internal(
             "success": False,
             "error": f"Failed to calculate returns: {str(e)}",
         }
-
-
-def _format_analysis(
-    ticker: str,
-    resolved_symbol: str,
-    company_name: str,
-    start_date: str,
-    end_date: str,
-    years_available: float,
-    data_points: int,
-    returns: Dict[str, Union[float, str]],
-    total_return: float,
-    years_requested: int,
-) -> str:
-    """
-    Format the analysis results as a readable string.
-
-    Args:
-        ticker: Original ticker input
-        resolved_symbol: Resolved ticker symbol
-        company_name: Company/fund name
-        start_date: Start date of data
-        end_date: End date of data
-        years_available: Years of data available
-        data_points: Number of trading days
-        returns: Dict of returns by year
-        total_return: Total return percentage
-        years_requested: Number of years requested
-
-    Returns:
-        Formatted analysis string
-    """
-    # Build returns section
-    returns_section = []
-    for year in range(1, years_requested + 1):
-        key = f"{year}_year"
-        if key in returns:
-            value = returns[key]
-            if value == "N/A":
-                returns_section.append(f"  • {year} Year: N/A (insufficient data)")
-            else:
-                if year == 1:
-                    returns_section.append(f"  • 1 Year: {value}%")
-                else:
-                    returns_section.append(f"  • {year} Years: {value}% (annualized)")
-
-    returns_text = "\n".join(returns_section)
-
-    analysis = f"""✅ Financial Analysis: {ticker} ({resolved_symbol})
-
-Company/Fund: {company_name}
-Data Period: {start_date} to {end_date}
-Duration: {years_available} years ({data_points} trading days)
-
-RETURNS:
-{returns_text}
-
-Total Return: {total_return}%"""
-
-    return analysis
