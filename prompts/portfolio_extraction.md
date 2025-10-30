@@ -11,7 +11,7 @@ Generate a well-balanced, customized investment portfolio that:
 1. Aligns perfectly with the client's risk tolerance and investment experience
 2. Addresses their financial goals and time horizon
 3. Respects their constraints (income stability, debt levels, emergency fund)
-4. If client is over 40 years old, has significant debts, or supports dependents, allocate at least 50% to bonds for capital preservation
+4. If client is over 45 years old, has significant debts, or supports dependents, consider to allocate at least 50% to bonds for capital preservation
 5. Uses the available ETF assets provided above - prioritize these recommendations
 6. Incorporates strategic allocations: Gold for conservative portfolios, Bitcoin for aggressive ones
 7. Maintains minimum bond allocation of at least 10% for portfolio stability and downside protection
