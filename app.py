@@ -22,6 +22,8 @@ from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
 
+MIN_ASSET_VOLATILITY = 0.1  # Minimum volatility threshold for assets (10%)
+
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -39,7 +41,7 @@ st.set_page_config(
     page_title="Financial AI Agent",
     page_icon="💰",
     layout="centered",
-    initial_sidebar_state="auto",
+    initial_sidebar_state="collapsed",
 )
 
 # Custom CSS
@@ -463,6 +465,18 @@ def _initialize_session_state():
             False,
             "Initialized agent_is_healthy session state to False",
         ),
+        "generated_portfolio": (
+            None,
+            "Initialized generated_portfolio session state to None",
+        ),
+        "pac_params": (
+            None,
+            "Initialized pac_params session state to None",
+        ),
+        "cached_returns_data": (
+            None,
+            "Initialized cached_returns_data session state to None",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -787,7 +801,6 @@ def _display_portfolio_pie_chart(portfolio):
             fig = px.pie(
                 values=asset_percentages,
                 names=asset_symbols,
-                # title="Portfolio Allocation",
                 hole=0.3,  # Create donut chart
             )
 
@@ -963,7 +976,7 @@ def _display_wealth_simulation(portfolio, financial_advisor_agent):
 
                                 asset_returns[asset_symbol] = avg_return / 100
                                 asset_volatility[asset_symbol] = max(
-                                    volatility / 100, 0.1
+                                    volatility / 100, MIN_ASSET_VOLATILITY
                                 )  # Min 10% volatility
                                 total_weight += asset_percentage
 
@@ -1003,25 +1016,28 @@ def _display_wealth_simulation(portfolio, financial_advisor_agent):
                 portfolio_volatility = np.sqrt(
                     sum(
                         (
-                            asset_volatility.get(symbol, 0)
-                            * (
-                                next(
-                                    (
-                                        a.get("percentage")
-                                        if isinstance(a, dict)
-                                        else a.percentage
-                                        for a in portfolio["assets"]
-                                        if (
-                                            a.get("symbol")
+                            (
+                                asset_volatility.get(symbol, 0)
+                                * (
+                                    next(
+                                        (
+                                            a.get("percentage")
                                             if isinstance(a, dict)
-                                            else a.symbol
-                                        )
-                                        == symbol
-                                    ),
-                                    0,
+                                            else a.percentage
+                                            for a in portfolio["assets"]
+                                            if (
+                                                a.get("symbol")
+                                                if isinstance(a, dict)
+                                                else a.symbol
+                                            )
+                                            == symbol
+                                        ),
+                                        0,
+                                    )
+                                    / 100
                                 )
-                                / 100
                             )
+                            ** 2
                         )
                         for symbol in asset_volatility
                     )

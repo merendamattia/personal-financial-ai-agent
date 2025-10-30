@@ -7,7 +7,7 @@ financial information from user conversations.
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FinancialProfile(BaseModel):
@@ -121,10 +121,9 @@ class FinancialProfile(BaseModel):
         default="None", description="Any additional important notes or observations"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="ignore",
+        json_schema_extra={
             "financial_profile": {
                 "age_range": "30-39",
                 "employment_status": "employed",
@@ -151,4 +150,5 @@ class FinancialProfile(BaseModel):
                 "insurance_coverage": "Health, Life, Home insurance",
                 "summary_notes": "User shows good financial discipline and awareness",
             }
-        }
+        },
+    )
