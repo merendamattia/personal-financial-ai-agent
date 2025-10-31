@@ -1,3 +1,27 @@
+# [1.3.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.2.0...v1.3.0) (2025-10-31)
+
+
+### Bug Fixes
+
+* correct typo ([96a1b4f](https://github.com/merendamattia/personal-financial-ai-agent/commit/96a1b4f23f2c4c25463b5b8d2a3f3f369332032d))
+* correct wording in portfolio guidelines for bond allocation considerations ([a877c75](https://github.com/merendamattia/personal-financial-ai-agent/commit/a877c75159b5250b57aed75536387139ae2ed9c9))
+* simplify welcome message logging by removing unnecessary state advancement ([61c002c](https://github.com/merendamattia/personal-financial-ai-agent/commit/61c002c4a0725ba8df7c52d6acd8b532d41ea367))
+* update age threshold for bond allocation requirement from 40 to 45 years old ([cc479b4](https://github.com/merendamattia/personal-financial-ai-agent/commit/cc479b4ff4f96165d9f9c110e01043f10fc7a3cf))
+* update age threshold for bond allocation requirement from 45/50 to 40 years old ([6bc16af](https://github.com/merendamattia/personal-financial-ai-agent/commit/6bc16afa5feda6e0a1d476ebf2a44d3b85f5b475))
+* update questions for clarity and consistency in financial assessment prompts ([2d7c451](https://github.com/merendamattia/personal-financial-ai-agent/commit/2d7c451fb540f32e0fae7a880a00f4af33f8c069))
+
+
+### Features
+
+* add portfolio visualization and wealth simulation features ([#14](https://github.com/merendamattia/personal-financial-ai-agent/issues/14)) ([107508e](https://github.com/merendamattia/personal-financial-ai-agent/commit/107508e76833f4658fc41be3900baf71d4fa850a))
+* enhance financial profile extraction with specific fields and defaults ([9f8fc5a](https://github.com/merendamattia/personal-financial-ai-agent/commit/9f8fc5a9e9ea4d7b53bfb7938f8254be22b8a561))
+* implement PAC metrics extraction and update financial profile structure ([283bdd1](https://github.com/merendamattia/personal-financial-ai-agent/commit/283bdd1b66911677f9bba1c1811383260eb5397b))
+
+
+### Performance Improvements
+
+* optimize symbol resolution for BTC-EUR and GOLD by limiting variations ([c58bec3](https://github.com/merendamattia/personal-financial-ai-agent/commit/c58bec39c5b2cfaae71fd4d87fbabeb06b5906ff))
+
 # [1.2.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.1.0...v1.2.0) (2025-10-30)
 
 
