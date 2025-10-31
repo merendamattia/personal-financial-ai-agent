@@ -157,8 +157,10 @@ def _search_and_resolve_symbol(symbol: str) -> SymbolResolution:
     """
     logger.info("Searching for symbol: %s", symbol)
 
+    SYMBOLS_WITHOUT_SUFFIX = {"BTC-EUR", "GOLD"}
+
     try:
-        if symbol.upper() == "BTC-EUR" or symbol.upper() == "GOLD":
+        if symbol.upper() in SYMBOLS_WITHOUT_SUFFIX:
             variations = [symbol.upper()]
         else:
             variations = [
