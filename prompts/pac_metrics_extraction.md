@@ -9,7 +9,7 @@ Extract ONLY these 2 values:
    - Convert ranges to numeric values: "1k-5k" -> 3000, "5k-20k" -> 12500, "20k+" -> 20000
 
 2. **monthly_savings**: How much the user can save and invest monthly (in euros).
-   - Look at 'montly_savings_amount' field
+   - Look at 'monthly_savings_amount' field
    - Minimum 200 euros
 
 Return ONLY these 2 numeric values in the exact JSON structure required.

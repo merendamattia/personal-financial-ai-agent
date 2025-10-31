@@ -29,7 +29,7 @@ class TestFinancialProfileCreation:
             income_stability="moderate",
             monthly_expenses_range="2k-3k",
             total_debt="minimal",
-            montly_savings_amount="20k",
+            monthly_savings_amount="20k",
             investment_experience="beginner",
             risk_tolerance="conservative",
         )
@@ -45,7 +45,7 @@ class TestFinancialProfileCreation:
             income_stability="stable",
             monthly_expenses_range="4k-5k",
             total_debt="minimal",
-            montly_savings_amount="50k",
+            monthly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
         )
@@ -60,7 +60,7 @@ class TestFinancialProfileCreation:
             income_stability="stable",
             monthly_expenses_range="4k-5k",
             total_debt="minimal",
-            montly_savings_amount="50k",
+            monthly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
             geographic_allocation="Emerging markets",
@@ -96,7 +96,7 @@ class TestFinancialProfileValidation:
                 income_stability=stability,
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                montly_savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance="moderate",
             )
@@ -112,7 +112,7 @@ class TestFinancialProfileValidation:
                 income_stability="stable",
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                montly_savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance=risk,
             )
@@ -128,7 +128,7 @@ class TestFinancialProfileValidation:
                 income_stability="stable",
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                montly_savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience=exp,
                 risk_tolerance="moderate",
             )

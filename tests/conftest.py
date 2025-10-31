@@ -21,7 +21,7 @@ def sample_financial_profile():
         major_expenses="Mortgage: €2000/month",
         total_debt="150k",
         debt_types="Mortgage",
-        montly_savings_amount="1k",
+        monthly_savings_amount="1k",
         active_investments="20k euros in ETF index funds",
         investment_experience="intermediate",
         goals="Retirement planning, home equity building",

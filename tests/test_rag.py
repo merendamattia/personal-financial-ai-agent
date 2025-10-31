@@ -22,7 +22,7 @@ def create_test_profile() -> dict:
         "total_debt": "250k-300k",
         "debt_types": "Mortgage, car loan",
         # Assets and Savings
-        "montly_savings_amount": "50k-100k",
+        "monthly_savings_amount": "50k-100k",
         "emergency_fund_months": "6",
         "active_investments": "Current: 150k in 401k, 50k in personal brokerage account",
         "investment_experience": "intermediate",

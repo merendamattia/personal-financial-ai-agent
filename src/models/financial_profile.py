@@ -52,7 +52,7 @@ class FinancialProfile(BaseModel):
     )
 
     # Assets and Savings
-    montly_savings_amount: str = Field(
+    monthly_savings_amount: str = Field(
         default="0",
         description="Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+', etc.)",
     )
