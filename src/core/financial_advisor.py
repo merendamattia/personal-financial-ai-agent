@@ -91,7 +91,7 @@ class FinancialAdvisorAgent(BaseAgent):
         Returns:
             Empty list - no tools for Financial advisor
         """
-        logger.debug("Setting up financial advisor tools")
+        logger.debug("Financial advisor initialized with no tools")
         return []
 
     def _get_default_planning_interval(self) -> int:
