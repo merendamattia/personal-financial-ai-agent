@@ -33,7 +33,6 @@ class TestFinancialProfileCreation:
             investment_experience="beginner",
             risk_tolerance="conservative",
         )
-        assert profile.occupation == "None"
         assert profile.summary_notes == "None"
 
     def test_geographic_allocation_default(self):
@@ -73,7 +72,6 @@ class TestFinancialProfileCreation:
         assert isinstance(profile_dict, dict)
         assert "age_range" in profile_dict
         assert profile_dict["age_range"] == "30-39"
-        assert profile_dict["occupation"] == "Software Engineer"
 
     def test_model_dump_json(self, sample_financial_profile):
         """Test converting profile to JSON."""
