@@ -1025,7 +1025,7 @@ def _display_wealth_simulation(
                                 asset_returns[asset_symbol] = avg_return / 100
                                 asset_volatility[asset_symbol] = max(
                                     volatility / 100, MONTECARLO_MIN_ASSET_VOLATILITY
-                                )  # Min 10% volatility
+                                )
                                 total_weight += asset_percentage
 
                     except Exception as e:

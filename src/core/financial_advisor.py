@@ -8,8 +8,6 @@ import json
 import logging
 from typing import Optional
 
-from pydantic import BaseModel
-
 from ..models import FinancialProfile, PACMetrics, Portfolio
 from ..retrieval import RAGAssetRetriever
 from ..tools import analyze_financial_asset
