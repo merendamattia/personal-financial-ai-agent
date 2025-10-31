@@ -149,7 +149,6 @@ For each field, extract the exact information mentioned. If not mentioned, use t
 EXTRACT THESE FIELDS ONLY (no extra fields):
 - age_range: Age range (e.g., '25-34', '35-44', etc.) [default: '18-65']
 - employment_status: Employment status (e.g., 'employed', 'self-employed', 'retired') [default: 'Employed']
-- occupation: Current occupation or industry [default: 'None']
 - annual_income_range: Income range (e.g., '30k-50k', '50k-100k', '100k+') [default: 'None']
 - income_stability: Income stability (e.g., 'stable', 'moderate', 'unstable') [default: 'None']
 - additional_income_sources: Additional income sources [default: 'None']
@@ -158,7 +157,6 @@ EXTRACT THESE FIELDS ONLY (no extra fields):
 - total_debt: Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k') [default: 'None']
 - debt_types: Types of debt (mortgage, credit card, student loans, etc.) [default: 'None']
 - savings_amount: Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+') [default: 'None']
-- emergency_fund_months: Number of months of expenses in emergency fund [default: 'None']
 - investments: Investment portfolio details (stocks, ETFs, crypto, etc.) [default: 'None']
 - investment_experience: Investment experience (beginner, intermediate, advanced) [default: 'Beginner']
 - primary_goals: Primary financial goals [default: 'Savings']
@@ -166,7 +164,6 @@ EXTRACT THESE FIELDS ONLY (no extra fields):
 - long_term_goals: Long-term goals (5+ years) [default: 'Savings']
 - risk_tolerance: Risk tolerance (conservative, moderate, aggressive) [default: 'Conservative']
 - risk_concerns: Specific financial concerns or risks [default: 'None']
-- financial_knowledge_level: Financial knowledge (beginner, intermediate, advanced) [default: 'Beginner']
 - geographic_allocation: Geographic investment preference [default: 'Global balanced']
 - family_dependents: Number of dependents or family situation [default: 'None']
 - insurance_coverage: Types of insurance coverage [default: 'None']

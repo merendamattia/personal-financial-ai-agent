@@ -22,9 +22,6 @@ class FinancialProfile(BaseModel):
         default="Employed",
         description="Employment status (e.g., 'employed', 'self-employed', 'retired', etc.)",
     )
-    occupation: Optional[str] = Field(
-        default="None", description="Current occupation or industry"
-    )
 
     # Income Information
     annual_income_range: str = Field(
@@ -63,10 +60,6 @@ class FinancialProfile(BaseModel):
         default="None",
         description="Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+', etc.)",
     )
-    emergency_fund_months: Optional[str] = Field(
-        default="None",
-        description="Number of months of expenses covered by emergency fund (e.g., '1', '3', '6', etc.)",
-    )
     investments: Optional[str] = Field(
         default="None",
         description="Investment portfolio details (stocks, ETFs, crypto, etc.)",
@@ -97,10 +90,13 @@ class FinancialProfile(BaseModel):
         default="None", description="Any specific financial concerns or risks"
     )
 
-    # Financial Knowledge
-    financial_knowledge_level: str = Field(
-        default="Beginner",
-        description="Financial knowledge level (beginner, intermediate, advanced)",
+    # Family and Insurance
+    family_dependents: Optional[str] = Field(
+        default="None", description="Number of dependents or family situation"
+    )
+    insurance_coverage: Optional[str] = Field(
+        default="None",
+        description="Types of insurance coverage (health, life, property, etc.)",
     )
 
     # Investment Geography
@@ -109,14 +105,7 @@ class FinancialProfile(BaseModel):
         description="Geographic investment preference (emerging markets, USA, Europe, global balanced, etc.)",
     )
 
-    # Other Information
-    family_dependents: Optional[str] = Field(
-        default="None", description="Number of dependents or family situation"
-    )
-    insurance_coverage: Optional[str] = Field(
-        default="None",
-        description="Types of insurance coverage (health, life, property, etc.)",
-    )
+    # Additional Notes
     summary_notes: Optional[str] = Field(
         default="None", description="Any additional important notes or observations"
     )
@@ -127,24 +116,21 @@ class FinancialProfile(BaseModel):
             "financial_profile": {
                 "age_range": "30-39",
                 "employment_status": "employed",
-                "occupation": "Software Engineer",
                 "annual_income_range": "80k-120k",
                 "income_stability": "stable",
                 "additional_income_sources": "None mentioned",
                 "monthly_expenses_range": "4k-5k",
-                "major_expenses": "Mortgage: $2000/month",
+                "major_expenses": "Mortgage: €2000/month",
                 "total_debt": "150k (mortgage)",
                 "debt_types": "Mortgage",
                 "savings_amount": "50k",
-                "emergency_fund_months": "6",
                 "investments": "ETF index funds",
                 "investment_experience": "intermediate",
                 "primary_goals": "Retirement planning, home equity building",
                 "short_term_goals": "Emergency fund optimization",
-                "long_term_goals": "Retire at 65 with $2M portfolio",
+                "long_term_goals": "Retire at 65 with €2M portfolio",
                 "risk_tolerance": "moderate",
                 "risk_concerns": "Market volatility concerns",
-                "financial_knowledge_level": "intermediate",
                 "geographic_allocation": "Global balanced",
                 "family_dependents": "2 children",
                 "insurance_coverage": "Health, Life, Home insurance",

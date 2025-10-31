@@ -6,27 +6,27 @@
     },
     {
       "id": 2,
-      "text": "Qual è la tua occupazione o il settore in cui lavori?"
-    },
-    {
-      "id": 3,
       "text": "Qual è il tuo reddito mensile netto approssimativo e come valuti la stabilità del tuo reddito? (ad esempio: 3000€, stabile)"
     },
     {
-      "id": 4,
+      "id": 3,
       "text": "Hai fonti di reddito aggiuntive oltre al lavoro principale? (ad esempio: investimenti, freelance, affitti)"
     },
     {
-      "id": 5,
+      "id": 4,
       "text": "Quali sono le tue spese mensili principali e stima la fascia totale? (ad esempio: affitto 1000€, totale 2500€)"
     },
     {
-      "id": 6,
+      "id": 5,
       "text": "Attualmente hai debiti? Se sì, quale importo approssimativo e che tipo? (mutuo, prestiti, carte di credito)"
     },
     {
+      "id": 6,
+      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+    },
+    {
       "id": 7,
-      "text": "Quanto hai in risparmi e per quanti mesi coprirebbero le tue spese? (ad esempio: 20000€, 8 mesi)"
+      "text": "Quanto riesci a risparmiare al mese? (ad esempio: 200€)"
     },
     {
       "id": 8,
@@ -34,30 +34,18 @@
     },
     {
       "id": 9,
-      "text": "Quali sono i tuoi principali obiettivi finanziari? (ad esempio: casa, pensione, accumulare ricchezza)"
+      "text": "Quali sono i tuoi principali obiettivi finanziari? (ad esempio: comprare casa, pensione anticipata, accumulare ricchezza, FIRE)"
     },
     {
       "id": 10,
-      "text": "Hai obiettivi finanziari a breve termine (1-2 anni) e a lungo termine (5+ anni)?"
+      "text": "Hey! Abbiamo quasi finito, giusto le ultime due domande! Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
     },
     {
       "id": 11,
-      "text": "Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
-    },
-    {
-      "id": 12,
-      "text": "Come valuteresti il tuo livello di conoscenza finanziaria? (principiante, intermedio, avanzato)"
-    },
-    {
-      "id": 13,
       "text": "Per quanto riguarda gli investimenti geografici, preferisci mercati emergenti, USA, Europa, oppure una distribuzione bilanciata globale?"
     },
     {
-      "id": 14,
-      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
-    },
-    {
-      "id": 15,
+      "id": 12,
       "text": "C'è qualcos'altro di importante sulla tua situazione finanziaria che vorresti condividere?"
     }
   ]
