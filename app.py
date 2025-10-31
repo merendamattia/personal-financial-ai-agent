@@ -1615,9 +1615,7 @@ def main():
                 {"role": "assistant", "content": welcome_message}
             )
 
-            # Now advance to the next question index for the first user response
-            chatbot_agent.advance_to_next_question()
-            logger.debug("Welcome message sent, advanced to question index 1")
+            logger.debug("Welcome message sent")
         except Exception as e:
             logger.error(
                 "Failed to generate welcome message: %s", str(e), exc_info=True
