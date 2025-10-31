@@ -22,7 +22,13 @@ from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
 
-MIN_ASSET_VOLATILITY = 0.1  # Minimum volatility threshold for assets (10%)
+MONTECARLO_MIN_ASSET_VOLATILITY = float(
+    os.getenv("MONTECARLO_MIN_ASSET_VOLATILITY", 0.1)
+)
+MONTECARLO_SIMULATION_SCENARIOS = int(
+    os.getenv("MONTECARLO_SIMULATION_SCENARIOS", 1000)
+)
+MONTECARLO_SIMULATION_YEARS = int(os.getenv("MONTECARLO_SIMULATION_YEARS", 20))
 
 # Configure logging
 logging.basicConfig(
@@ -257,11 +263,6 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                 asset_symbol = (
                     asset.get("symbol") if isinstance(asset, dict) else asset.symbol
                 )
-                # asset_percentage = (
-                #     asset.get("percentage")
-                #     if isinstance(asset, dict)
-                #     else asset.percentage
-                # )
 
                 if asset_symbol:
                     try:
@@ -308,7 +309,6 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                             returns_data.append(
                                 {
                                     "Asset": f"{company_name} ({asset_symbol})",
-                                    # "Allocation %": asset_percentage,
                                     "1-Year Return %": get_return_for_year(1),
                                     "3-Year Return %": get_return_for_year(3),
                                     "5-Year Return %": get_return_for_year(5),
@@ -324,7 +324,6 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                             returns_data.append(
                                 {
                                     "Asset": f"{asset_symbol} (Error)",
-                                    # "Allocation %": asset_percentage,
                                     "1-Year Return %": "N/A",
                                     "3-Year Return %": "N/A",
                                     "5-Year Return %": "N/A",
@@ -341,7 +340,6 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
                         returns_data.append(
                             {
                                 "Asset": f"{asset_symbol} (Error)",
-                                # "Allocation %": asset_percentage,
                                 "1-Year Return %": "N/A",
                                 "3-Year Return %": "N/A",
                                 "5-Year Return %": "N/A",
@@ -355,7 +353,7 @@ def _fetch_and_display_historical_returns(portfolio, financial_advisor_agent):
         st.dataframe(df_returns, width="stretch", hide_index=True)
         logger.info("Returns table displayed successfully")
     else:
-        st.info("📌 Unable to retrieve historical data for assets in the portfolio.")
+        st.info("Unable to retrieve historical data for assets in the portfolio.")
 
 
 def _display_key_considerations(portfolio):
@@ -1026,7 +1024,7 @@ def _display_wealth_simulation(
 
                                 asset_returns[asset_symbol] = avg_return / 100
                                 asset_volatility[asset_symbol] = max(
-                                    volatility / 100, MIN_ASSET_VOLATILITY
+                                    volatility / 100, MONTECARLO_MIN_ASSET_VOLATILITY
                                 )  # Min 10% volatility
                                 total_weight += asset_percentage
 
@@ -1126,14 +1124,11 @@ def _display_wealth_simulation(
                         monthly_contribution,
                     )
 
-                # Monte Carlo simulation parameters
-                years = 20
-                scenarios = 1000
-                time_steps = years * 12  # Monthly steps
+                time_steps = MONTECARLO_SIMULATION_YEARS * 12  # Monthly steps
 
                 # Run Monte Carlo simulation
                 np.random.seed(42)
-                simulations = np.zeros((time_steps, scenarios))
+                simulations = np.zeros((time_steps, MONTECARLO_SIMULATION_SCENARIOS))
                 simulations[0] = initial_investment
 
                 monthly_return = portfolio_return_annualized / 12
@@ -1141,7 +1136,9 @@ def _display_wealth_simulation(
 
                 for t in range(1, time_steps):
                     random_returns = np.random.normal(
-                        monthly_return, monthly_volatility, scenarios
+                        monthly_return,
+                        monthly_volatility,
+                        MONTECARLO_SIMULATION_SCENARIOS,
                     )
                     simulations[t] = simulations[t - 1] * (1 + random_returns)
 
@@ -1151,7 +1148,7 @@ def _display_wealth_simulation(
                 percentile_75 = np.percentile(simulations, 75, axis=1)
 
                 # Create time array in years
-                time_array = np.linspace(0, years, time_steps)
+                time_array = np.linspace(0, MONTECARLO_SIMULATION_YEARS, time_steps)
 
                 # Create figure for lump sum
                 fig_lump = go.Figure()
@@ -1230,8 +1227,8 @@ def _display_wealth_simulation(
                 with col4:
                     st.metric(
                         "Time Horizon",
-                        f"{years} years",
-                        help="Projection period: 20 years with monthly compounding",
+                        f"{MONTECARLO_SIMULATION_YEARS} years",
+                        help=f"Projection period: {MONTECARLO_SIMULATION_YEARS} years with monthly compounding",
                     )
 
                 # Display lump sum statistics
@@ -1268,7 +1265,7 @@ def _display_wealth_simulation(
                 **Cos'è un Piano di Accumulo?**
 
                 Un **PAC (Piano di Accumulo del Capitale)** è una strategia di investimento dove depositi una somma fissa
-                (es. €500) ogni mese, indipendentemente dall'andamento del mercato.
+                (es. €250) ogni mese, indipendentemente dall'andamento del mercato.
 
                 **Perché è importante?**
                 - **Riduce il rischio**: Investi a prezzi sia alti che bassi, mediando il costo
@@ -1279,7 +1276,9 @@ def _display_wealth_simulation(
                 )
 
                 # PAC simulations (monthly_contribution and initial_investment already set above)
-                pac_simulations = np.zeros((time_steps, scenarios))
+                pac_simulations = np.zeros(
+                    (time_steps, MONTECARLO_SIMULATION_SCENARIOS)
+                )
 
                 np.random.seed(42)
                 for t in range(time_steps):
@@ -1288,7 +1287,9 @@ def _display_wealth_simulation(
                         pac_simulations[t] = initial_investment + monthly_contribution
                     else:
                         random_returns = np.random.normal(
-                            monthly_return, monthly_volatility, scenarios
+                            monthly_return,
+                            monthly_volatility,
+                            MONTECARLO_SIMULATION_SCENARIOS,
                         )
                         pac_simulations[t] = (
                             pac_simulations[t - 1] * (1 + random_returns)
@@ -1402,8 +1403,8 @@ def _display_wealth_simulation(
                 with col5:
                     st.metric(
                         "Time Horizon",
-                        f"{years} years",
-                        help="Projection period: 20 years with monthly compounding",
+                        f"{MONTECARLO_SIMULATION_YEARS} years",
+                        help=f"Projection period: {MONTECARLO_SIMULATION_YEARS} years with monthly compounding",
                     )
 
                 # Display PAC statistics
