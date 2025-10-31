@@ -158,28 +158,31 @@ def _search_and_resolve_symbol(symbol: str) -> SymbolResolution:
     logger.info("Searching for symbol: %s", symbol)
 
     try:
-        variations = [
-            f"{symbol.upper()}.MI",  # Borsa Italiana (Milan)
-            f"{symbol.upper()}.DE",  # Deutsche Börse (XETRA - Germany)
-            f"{symbol.upper()}.PA",  # Euronext Paris (France)
-            f"{symbol.upper()}.AS",  # Euronext Amsterdam (Netherlands)
-            f"{symbol.upper()}.BR",  # Euronext Brussels (Belgium)
-            f"{symbol.upper()}.LS",  # Euronext Lisbon (Portugal)
-            f"{symbol.upper()}.SW",  # SIX Swiss Exchange (Switzerland)
-            f"{symbol.upper()}.L",  # London Stock Exchange (United Kingdom)
-            f"{symbol.upper()}.CO",  # Nasdaq Copenhagen (Denmark)
-            f"{symbol.upper()}.ST",  # Nasdaq Stockholm (Sweden)
-            f"{symbol.upper()}.HE",  # Nasdaq Helsinki (Finland)
-            f"{symbol.upper()}.OL",  # Oslo Børs (Norway)
-            f"{symbol.upper()}.IR",  # Irish Stock Exchange (Ireland)
-            f"{symbol.upper()}.VI",  # Vienna Stock Exchange (Austria)
-            f"{symbol.upper()}.WA",  # Warsaw Stock Exchange (Poland)
-            f"{symbol.upper()}.PR",  # Prague Stock Exchange (Czech Republic)
-            f"{symbol.upper()}.BD",  # Budapest Stock Exchange (Hungary)
-            f"{symbol.upper()}.AT",  # Athens Stock Exchange (Greece)
-            f"{symbol.upper()}.IS",  # Borsa Istanbul (Turkey)
-            symbol.upper(),  # fallback: no suffix (e.g. NASDAQ/NYSE)
-        ]
+        if symbol.upper() == "BTC-EUR" or symbol.upper() == "GOLD":
+            variations = [symbol.upper()]
+        else:
+            variations = [
+                f"{symbol.upper()}.MI",  # Borsa Italiana (Milan)
+                f"{symbol.upper()}.DE",  # Deutsche Börse (XETRA - Germany)
+                f"{symbol.upper()}.PA",  # Euronext Paris (France)
+                f"{symbol.upper()}.AS",  # Euronext Amsterdam (Netherlands)
+                f"{symbol.upper()}.BR",  # Euronext Brussels (Belgium)
+                f"{symbol.upper()}.LS",  # Euronext Lisbon (Portugal)
+                f"{symbol.upper()}.SW",  # SIX Swiss Exchange (Switzerland)
+                f"{symbol.upper()}.L",  # London Stock Exchange (United Kingdom)
+                f"{symbol.upper()}.CO",  # Nasdaq Copenhagen (Denmark)
+                f"{symbol.upper()}.ST",  # Nasdaq Stockholm (Sweden)
+                f"{symbol.upper()}.HE",  # Nasdaq Helsinki (Finland)
+                f"{symbol.upper()}.OL",  # Oslo Børs (Norway)
+                f"{symbol.upper()}.IR",  # Irish Stock Exchange (Ireland)
+                f"{symbol.upper()}.VI",  # Vienna Stock Exchange (Austria)
+                f"{symbol.upper()}.WA",  # Warsaw Stock Exchange (Poland)
+                f"{symbol.upper()}.PR",  # Prague Stock Exchange (Czech Republic)
+                f"{symbol.upper()}.BD",  # Budapest Stock Exchange (Hungary)
+                f"{symbol.upper()}.AT",  # Athens Stock Exchange (Greece)
+                f"{symbol.upper()}.IS",  # Borsa Istanbul (Turkey)
+                symbol.upper(),  # fallback: no suffix (e.g. NASDAQ/NYSE)
+            ]
 
         for variant in variations:
             try:
