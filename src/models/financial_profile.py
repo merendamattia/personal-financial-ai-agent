@@ -70,15 +70,9 @@ class FinancialProfile(BaseModel):
     )
 
     # Financial Goals
-    primary_goals: Optional[str] = Field(
+    goals: Optional[str] = Field(
         default="Savings",
         description="Primary financial goals (e.g., 'retirement planning', 'home purchase', 'wealth building', etc.)",
-    )
-    short_term_goals: Optional[str] = Field(
-        default="Savings", description="Short-term goals (next 1-2 years)"
-    )
-    long_term_goals: Optional[str] = Field(
-        default="Savings", description="Long-term goals (5+ years)"
     )
 
     # Risk Profile
@@ -108,33 +102,4 @@ class FinancialProfile(BaseModel):
     # Additional Notes
     summary_notes: Optional[str] = Field(
         default="None", description="Any additional important notes or observations"
-    )
-
-    model_config = ConfigDict(
-        extra="ignore",
-        json_schema_extra={
-            "financial_profile": {
-                "age_range": "30-39",
-                "employment_status": "employed",
-                "annual_income_range": "80k-120k",
-                "income_stability": "stable",
-                "additional_income_sources": "None mentioned",
-                "monthly_expenses_range": "4k-5k",
-                "major_expenses": "Mortgage: €2000/month",
-                "total_debt": "150k (mortgage)",
-                "debt_types": "Mortgage",
-                "savings_amount": "50k",
-                "investments": "ETF index funds",
-                "investment_experience": "intermediate",
-                "primary_goals": "Retirement planning, home equity building",
-                "short_term_goals": "Emergency fund optimization",
-                "long_term_goals": "Retire at 65 with €2M portfolio",
-                "risk_tolerance": "moderate",
-                "risk_concerns": "Market volatility concerns",
-                "geographic_allocation": "Global balanced",
-                "family_dependents": "2 children",
-                "insurance_coverage": "Health, Life, Home insurance",
-                "summary_notes": "User shows good financial discipline and awareness",
-            }
-        },
     )

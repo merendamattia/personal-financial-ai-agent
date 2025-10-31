@@ -909,13 +909,63 @@ def _display_expected_returns(portfolio, financial_advisor_agent):
             logger.info("Expected returns displayed successfully")
 
 
-def _display_wealth_simulation(portfolio, financial_advisor_agent):
+def _extract_financial_metrics(
+    profile: FinancialProfile, financial_advisor_agent
+) -> tuple:
+    """
+    Extract PAC metrics from financial profile using structured response.
+
+    Args:
+        profile: The FinancialProfile object
+        financial_advisor_agent: The FinancialAdvisorAgent instance for structured extraction
+
+    Returns:
+        Tuple of (initial_investment, monthly_savings) with proper values from LLM
+    """
+    logger.debug("Extracting PAC metrics from profile using structured response")
+
+    try:
+        if profile is None:
+            logger.warning("Profile is None, returning defaults")
+            return 5000, 200
+
+        # Convert profile to dict for agent
+        profile_dict = (
+            profile.model_dump() if hasattr(profile, "model_dump") else profile
+        )
+        logger.debug("Profile dict keys: %s", list(profile_dict.keys()))
+
+        # Use structured response to extract PAC metrics
+        pac_metrics = financial_advisor_agent.extract_pac_metrics(profile_dict)
+
+        initial_investment = pac_metrics.initial_investment
+        monthly_savings = pac_metrics.monthly_savings
+
+        logger.info(
+            "PAC METRICS EXTRACTED - Using structured response: Initial €%d, Monthly €%.0f",
+            initial_investment,
+            monthly_savings,
+        )
+        return initial_investment, monthly_savings
+
+    except Exception as e:
+        logger.error("Error extracting PAC metrics: %s", str(e))
+        logger.warning(
+            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €5000, Monthly €200"
+        )
+        return 5000, 200  # Return defaults
+
+
+def _display_wealth_simulation(
+    portfolio, financial_advisor_agent, financial_profile=None
+):
     """
     Display long-term wealth simulation with Monte Carlo scenarios and PAC simulation.
 
     Args:
         portfolio: The portfolio dictionary containing assets
         financial_advisor_agent: The FinancialAdvisorAgent instance
+        financial_profile: Optional FinancialProfile object for personalized PAC parameters
 
     Returns:
         None (displays simulation charts)
@@ -1047,8 +1097,36 @@ def _display_wealth_simulation(portfolio, financial_advisor_agent):
                 # Using the same methodology as Expected Returns: average of historical annual returns
                 portfolio_return_annualized = portfolio_return
 
+                # Extract personalized PAC parameters from financial profile if available
+                logger.info(
+                    "PAC SECTION - financial_profile is: %s",
+                    "NOT NONE" if financial_profile else "NONE",
+                )
+                if financial_profile:
+                    logger.info(
+                        "PAC SECTION - Extracting metrics from profile using agent"
+                    )
+                    (
+                        initial_investment,
+                        monthly_contribution,
+                    ) = _extract_financial_metrics(
+                        financial_profile, financial_advisor_agent
+                    )
+                    logger.info(
+                        "PAC SECTION - Using personalized PAC parameters from profile: Initial €%d, Monthly €%.0f",
+                        initial_investment,
+                        monthly_contribution,
+                    )
+                else:
+                    initial_investment = 5000
+                    monthly_contribution = 200
+                    logger.warning(
+                        "PAC SECTION - Profile is NONE, using default PAC parameters: Initial €%d, Monthly €%d",
+                        initial_investment,
+                        monthly_contribution,
+                    )
+
                 # Monte Carlo simulation parameters
-                initial_investment = 10000
                 years = 20
                 scenarios = 1000
                 time_steps = years * 12  # Monthly steps
@@ -1200,8 +1278,7 @@ def _display_wealth_simulation(portfolio, financial_advisor_agent):
                 """
                 )
 
-                # PAC parameters
-                monthly_contribution = 500  # €500 per month
+                # PAC simulations (monthly_contribution and initial_investment already set above)
                 pac_simulations = np.zeros((time_steps, scenarios))
 
                 np.random.seed(42)
@@ -1457,7 +1534,11 @@ def _display_portfolio_details(portfolio, financial_advisor_agent):
     # Display wealth simulation
     st.divider()
     st.markdown("### 🔮 Long-Term Wealth Projection")
-    _display_wealth_simulation(portfolio, financial_advisor_agent)
+    _display_wealth_simulation(
+        portfolio,
+        financial_advisor_agent,
+        financial_profile=st.session_state.financial_profile,
+    )
     logger.info("Portfolio display completed")
 
 

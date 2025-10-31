@@ -8,7 +8,9 @@ import json
 import logging
 from typing import Optional
 
-from ..models import FinancialProfile, Portfolio
+from pydantic import BaseModel
+
+from ..models import FinancialProfile, PACMetrics, Portfolio
 from ..retrieval import RAGAssetRetriever
 from ..tools import analyze_financial_asset
 from .base_agent import BaseAgent
@@ -143,55 +145,73 @@ class FinancialAdvisorAgent(BaseAgent):
         logger.debug("Extracting financial profile from summary")
 
         try:
-            extraction_prompt = f"""Extract ONLY the following financial profile fields from the conversation summary.
-For each field, extract the exact information mentioned. If not mentioned, use the default value provided.
+            extraction_prompt = f"""Extract ONLY the following 19 financial profile fields from the conversation summary.
 
-EXTRACT THESE FIELDS ONLY (no extra fields):
-- age_range: Age range (e.g., '25-34', '35-44', etc.) [default: '18-65']
-- employment_status: Employment status (e.g., 'employed', 'self-employed', 'retired') [default: 'Employed']
-- annual_income_range: Income range (e.g., '30k-50k', '50k-100k', '100k+') [default: 'None']
-- income_stability: Income stability (e.g., 'stable', 'moderate', 'unstable') [default: 'None']
-- additional_income_sources: Additional income sources [default: 'None']
-- monthly_expenses_range: Monthly expenses range (e.g., '2k-3k', '3k-5k') [default: 'None']
-- major_expenses: Major recurring expenses (mortgage, rent, car payment, etc.) [default: 'None']
-- total_debt: Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k') [default: 'None']
-- debt_types: Types of debt (mortgage, credit card, student loans, etc.) [default: 'None']
-- savings_amount: Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+') [default: 'None']
-- investments: Investment portfolio details (stocks, ETFs, crypto, etc.) [default: 'None']
-- investment_experience: Investment experience (beginner, intermediate, advanced) [default: 'Beginner']
-- primary_goals: Primary financial goals [default: 'Savings']
-- short_term_goals: Short-term goals (next 1-2 years) [default: 'Savings']
-- long_term_goals: Long-term goals (5+ years) [default: 'Savings']
-- risk_tolerance: Risk tolerance (conservative, moderate, aggressive) [default: 'Conservative']
-- risk_concerns: Specific financial concerns or risks [default: 'None']
-- geographic_allocation: Geographic investment preference [default: 'Global balanced']
-- family_dependents: Number of dependents or family situation [default: 'None']
-- insurance_coverage: Types of insurance coverage [default: 'None']
-- summary_notes: Any additional important notes [default: 'None']
+CRITICAL: Return ONLY these exact field names. Do NOT create any additional fields. Do NOT include fields like 'additional_income_source', 'risk_concern', 'family_dependent', or 'insurance_cover'.
+
+The 19 fields are:
+1. age_range - Age range (e.g., '25-34', '35-44', etc.)
+2. employment_status - Employment status (e.g., 'employed', 'self-employed', 'retired')
+3. annual_income_range - Income range (e.g., '30k-50k', '50k-100k', '100k+')
+4. income_stability - Income stability (e.g., 'stable', 'moderate', 'unstable')
+5. additional_income_sources - Additional income sources
+6. monthly_expenses_range - Monthly expenses range (e.g., '2k-3k', '3k-5k')
+7. major_expenses - Major recurring expenses (mortgage, rent, car payment)
+8. total_debt - Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k')
+9. debt_types - Types of debt (mortgage, credit card, student loans)
+10. savings_amount - Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+')
+11. investments - Investment portfolio details (stocks, ETFs, crypto)
+12. investment_experience - Investment experience (beginner, intermediate, advanced)
+13. goals - Primary financial goals
+14. risk_tolerance - Risk tolerance (conservative, moderate, aggressive)
+15. risk_concerns - Specific financial concerns or risks
+16. geographic_allocation - Geographic investment preference
+17. family_dependents - Number of dependents or family situation
+18. insurance_coverage - Types of insurance coverage
+19. summary_notes - Any additional important notes
+
+For any field not mentioned in the conversation, use the default values provided by the schema.
+If information is not explicitly mentioned, do NOT fabricate values.
 
 Conversation Summary:
 {conversation_summary}
 
-Extract ONLY these fields. Do not add any extra fields."""
+Return ONLY these 21 fields exactly as named above. Do not create extra fields."""
 
-            logger.debug("Calling structured_response with FinancialProfile model")
-
-            response = self._client.structured_response(
-                input=extraction_prompt,
-                output_cls=FinancialProfile,
+            logger.debug(
+                "Calling structured_response with StrictFinancialProfile model"
             )
 
-            logger.debug("Structured response received")
-            logger.debug("Response structured data: %s", response.structured_data)
+            try:
+                response = self._client.structured_response(
+                    input=extraction_prompt,
+                    output_cls=FinancialProfile,
+                    memory=self._memory,
+                )
 
-            if hasattr(response, "structured_data") and response.structured_data:
-                profile = response.structured_data[0]
-                logger.info("Financial profile extracted successfully")
-                logger.debug("Extracted profile data: %s", profile)
-                return profile
-            else:
-                logger.error("No structured data in response")
-                raise ValueError("No structured data returned from extraction")
+                logger.debug("Structured response received")
+                logger.debug("Response structured data: %s", response.structured_data)
+
+                if hasattr(response, "structured_data") and response.structured_data:
+                    profile = response.structured_data[0]
+                    logger.info("Financial profile extracted successfully")
+                    logger.debug("Extracted profile data: %s", profile)
+                    return profile
+                else:
+                    logger.error("No structured data in response")
+                    raise ValueError("No structured data returned from extraction")
+            except ValueError as ve:
+                if "extra_forbidden" in str(
+                    ve
+                ) or "Extra inputs are not permitted" in str(ve):
+                    logger.error(
+                        "LLM generated extra fields that could not be filtered: %s",
+                        str(ve),
+                    )
+                    logger.warning("Returning default FinancialProfile")
+                    return FinancialProfile()
+                else:
+                    raise
 
         except Exception as e:
             logger.error(
@@ -199,7 +219,71 @@ Extract ONLY these fields. Do not add any extra fields."""
             )
             raise RuntimeError(f"Failed to extract financial profile: {e}") from e
 
-    # ==================== Portfolio Generation ====================
+    # ==================== PAC Metrics Extraction ====================
+
+    def extract_pac_metrics(self, financial_profile: dict) -> PACMetrics:
+        """
+        Extract PAC (Piano di Accumulo del Capitale) metrics from financial profile.
+
+        Uses structured response to get:
+        - Initial investment amount (from savings)
+        - Monthly savings capacity (from income - expenses)
+
+        Args:
+            financial_profile: Dictionary with financial profile information
+
+        Returns:
+            PACMetrics object with initial_investment and monthly_savings
+
+        Raises:
+            RuntimeError: If extraction fails
+        """
+        logger.debug("Extracting PAC metrics from financial profile")
+
+        try:
+            extraction_prompt = f"""Extract the PAC (Piano di Accumulo del Capitale) metrics from this financial profile.
+
+Financial Profile:
+{json.dumps(financial_profile, indent=2)}
+
+Extract ONLY these 2 values:
+1. **initial_investment**: How much money the user has saved or can invest as a lump sum (in euros).
+   - Look at 'investments' field
+   - Convert ranges to numeric values: "1k-5k" → 3000, "5k-20k" → 12500, "20k+" → 30000
+
+2. **monthly_savings**: How much the user can save and invest monthly (in euros).
+   - Look at 'savings_amount' field
+   - Minimum 100 euros
+
+Return ONLY these 2 numeric values in the exact JSON structure required."""
+
+            logger.debug("Calling structured_response with PACMetrics model")
+
+            response = self._client.structured_response(
+                input=extraction_prompt,
+                output_cls=PACMetrics,
+                memory=self._memory,
+            )
+
+            logger.debug("Structured response received")
+
+            if hasattr(response, "structured_data") and response.structured_data:
+                metrics = response.structured_data[0]
+                logger.info(
+                    "PAC metrics extracted successfully: Initial €%d, Monthly €%.0f",
+                    metrics.initial_investment,
+                    metrics.monthly_savings,
+                )
+                return metrics
+            else:
+                logger.error("No structured data in response")
+                logger.warning("Returning default PAC metrics")
+                return PACMetrics()
+
+        except Exception as e:
+            logger.error("Failed to extract PAC metrics: %s", str(e), exc_info=True)
+            logger.warning("Returning default PAC metrics due to extraction failure")
+            return PACMetrics()
 
     def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
         """
@@ -233,22 +317,8 @@ Extract ONLY these fields. Do not add any extra fields."""
             if self._rag_retriever:
                 logger.debug("Retrieving asset information via RAG")
 
-                risk_tolerance = financial_profile.get("risk_tolerance", "Conservative")
-                investment_experience = financial_profile.get(
-                    "investment_experience", "Beginner"
-                )
-                goals = financial_profile.get("primary_goals", "Savings")
-                time_horizon = financial_profile.get("long_term_goals", "None")
-                geographic_allocation = financial_profile.get(
-                    "geographic_allocation", "Global balanced"
-                )
-
                 query = self.rag_query_builder_prompt.format(
-                    risk_tolerance=risk_tolerance,
-                    investment_experience=investment_experience,
-                    time_horizon=time_horizon,
-                    financial_goals=goals,
-                    geographic_allocation=geographic_allocation,
+                    financial_profile=profile_json,
                 )
 
                 logger.debug("RAG query: %s", query)
