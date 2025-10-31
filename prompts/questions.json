@@ -2,50 +2,46 @@
   "questions": [
     {
       "id": 1,
-      "text": "Ciao! 👋 Iniziamo con le informazioni personali. In quale fascia di età ti trovi e qual è il tuo status occupazionale? (ad esempio: 30 anni, impiegato)"
+      "text": "Ciao! 👋 Iniziamo con le informazioni personali. Quanti anni hai e che lavoro fai? (ad esempio: 30 anni, impiegato)"
     },
     {
       "id": 2,
-      "text": "Qual è il tuo reddito mensile netto approssimativo e come valuti la stabilità del tuo reddito? (ad esempio: 3000€, stabile)"
+      "text": "Qual è il tuo reddito mensile netto approssimativo (considerando tutte le fonti di reddito aggiuntive) e come valuti la stabilità del tuo reddito? (ad esempio: 3000€, stabile)"
     },
     {
       "id": 3,
-      "text": "Hai fonti di reddito aggiuntive oltre al lavoro principale? (ad esempio: investimenti, freelance, affitti)"
-    },
-    {
-      "id": 4,
       "text": "Quanto riesci a risparmiare al mese? (ad esempio: 200€)"
     },
     {
+      "id": 4,
+      "text": "A quanto ammontano le tue spese mensili? Quali sono? (ad esempio: totale 1500€, di cui affitto 700€, cibo 300€, trasporti 200€, tempo libero 300€)"
+    },
+    {
       "id": 5,
-      "text": "Quali sono le tue spese mensili principali e stima la fascia totale? (ad esempio: affitto 1000€, totale 2500€)"
+      "text": "Attualmente hai debiti? Se sì, a quanto ammontano? (ad esempio: 20000€ di mutuo)"
     },
     {
       "id": 6,
-      "text": "Attualmente hai debiti? Se sì, quale importo approssimativo e che tipo? (mutuo, prestiti, carte di credito)"
+      "text": "Hai familiari a carico? Hai inoltre coperture assicurative attive? (ad esempio: due figli e ho un'assicurazione sulla vita)"
     },
     {
       "id": 7,
-      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+      "text": "Hai investimenti attivi? Se sì, a quanto ammonta la cifra investita? (ad esempio: 20000€ in azioni e 10000€ in obbligazioni)"
     },
     {
       "id": 8,
-      "text": "Hai investimenti attivi? Se sì, a quanto ammonta la cifra? (azioni, ETF, immobili, ecc.)"
-    },
-    {
-      "id": 9,
       "text": "Quali sono i tuoi principali obiettivi finanziari? (ad esempio: comprare casa, pensione anticipata, accumulare ricchezza, FIRE)"
     },
     {
-      "id": 10,
-      "text": "Abbiamo quasi finito, giusto le ultime due domande! Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
+      "id": 9,
+      "text": "Come definisci la tua propensione al rischio? Investiresti per preservare il capitale o per farlo crescere? (ad esempio: aggressivo, preferisco far crescere il capitale)"
     },
     {
-      "id": 11,
+      "id": 10,
       "text": "Per quanto riguarda gli investimenti geografici, preferisci mercati emergenti, USA, Europa, oppure una distribuzione bilanciata globale?"
     },
     {
-      "id": 12,
+      "id": 11,
       "text": "C'è qualcos'altro di importante sulla tua situazione finanziaria che vorresti condividere?"
     }
   ]
