@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Optional
 
-from ..models import FinancialProfile, Portfolio
+from ..models import FinancialProfile, PACMetrics, Portfolio
 from ..retrieval import RAGAssetRetriever
 from ..tools import analyze_financial_asset
 from .base_agent import BaseAgent
@@ -63,6 +63,12 @@ class FinancialAdvisorAgent(BaseAgent):
         self.rag_query_builder_prompt = self._load_prompt_template("rag_query_builder")
         self.portfolio_extraction_prompt = self._load_prompt_template(
             "portfolio_extraction"
+        )
+        self.financial_profile_extraction_prompt = self._load_prompt_template(
+            "financial_profile_extraction"
+        )
+        self.pac_metrics_extraction_prompt = self._load_prompt_template(
+            "pac_metrics_extraction"
         )
 
         # Initialize RAG retriever for asset data
@@ -143,32 +149,45 @@ class FinancialAdvisorAgent(BaseAgent):
         logger.debug("Extracting financial profile from summary")
 
         try:
-            extraction_prompt = f"""Extract the financial profile information from the following conversation summary.
-If any information is not mentioned or unclear, use reasonable default values based on context clues.
-
-Conversation Summary:
-{conversation_summary}
-
-Please extract all available financial information and structure it according to the provided model."""
-
-            logger.debug("Calling structured_response with FinancialProfile model")
-
-            response = self._client.structured_response(
-                input=extraction_prompt,
-                output_cls=FinancialProfile,
+            extraction_prompt = self.financial_profile_extraction_prompt.format(
+                conversation_summary=conversation_summary
             )
 
-            logger.debug("Structured response received")
-            logger.debug("Response structured data: %s", response.structured_data)
+            logger.debug(
+                "Calling structured_response with FinancialProfile model with prompt: %s",
+                extraction_prompt,
+            )
 
-            if hasattr(response, "structured_data") and response.structured_data:
-                profile = response.structured_data[0]
-                logger.info("Financial profile extracted successfully")
-                logger.debug("Extracted profile data: %s", profile)
-                return profile
-            else:
-                logger.error("No structured data in response")
-                raise ValueError("No structured data returned from extraction")
+            try:
+                response = self._client.structured_response(
+                    input=extraction_prompt,
+                    output_cls=FinancialProfile,
+                    memory=self._memory,
+                )
+
+                logger.debug("Structured response received")
+                logger.debug("Response structured data: %s", response.structured_data)
+
+                if hasattr(response, "structured_data") and response.structured_data:
+                    profile = response.structured_data[0]
+                    logger.info("Financial profile extracted successfully")
+                    logger.debug("Extracted profile data: %s", profile)
+                    return profile
+                else:
+                    logger.error("No structured data in response")
+                    raise ValueError("No structured data returned from extraction")
+            except ValueError as ve:
+                if "extra_forbidden" in str(
+                    ve
+                ) or "Extra inputs are not permitted" in str(ve):
+                    logger.error(
+                        "LLM generated extra fields that could not be filtered: %s",
+                        str(ve),
+                    )
+                    logger.warning("Returning default FinancialProfile")
+                    return FinancialProfile()
+                else:
+                    raise
 
         except Exception as e:
             logger.error(
@@ -176,7 +195,61 @@ Please extract all available financial information and structure it according to
             )
             raise RuntimeError(f"Failed to extract financial profile: {e}") from e
 
-    # ==================== Portfolio Generation ====================
+    # ==================== PAC Metrics Extraction ====================
+
+    def extract_pac_metrics(self, financial_profile: dict) -> PACMetrics:
+        """
+        Extract PAC (Piano di Accumulo del Capitale) metrics from financial profile.
+
+        Uses structured response to get:
+        - Initial investment amount (from savings)
+        - Monthly savings capacity (from income - expenses)
+
+        Args:
+            financial_profile: Dictionary with financial profile information
+
+        Returns:
+            PACMetrics object with initial_investment and monthly_savings
+
+        Raises:
+            RuntimeError: If extraction fails
+        """
+        logger.debug("Extracting PAC metrics from financial profile")
+
+        try:
+            extraction_prompt = self.pac_metrics_extraction_prompt.format(
+                financial_profile=json.dumps(financial_profile, indent=2)
+            )
+            logger.debug(
+                "Calling structured_response with PACMetrics model with prompt: %s",
+                extraction_prompt,
+            )
+
+            response = self._client.structured_response(
+                input=extraction_prompt,
+                output_cls=PACMetrics,
+                memory=self._memory,
+            )
+
+            logger.debug("Structured response received")
+
+            if hasattr(response, "structured_data") and response.structured_data:
+                metrics = response.structured_data[0]
+                logger.info(
+                    "PAC metrics extracted successfully: Initial €%d, Monthly €%.0f",
+                    metrics.initial_investment,
+                    metrics.monthly_savings,
+                )
+                return metrics
+            else:
+                logger.error("No structured data in response")
+                logger.warning("Returning default PAC metrics")
+                return PACMetrics()
+
+        except Exception as e:
+            logger.error("Failed to extract PAC metrics: %s", str(e), exc_info=True)
+            logger.warning("Returning default PAC metrics due to extraction failure")
+            return PACMetrics()
 
     def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
         """
@@ -210,22 +283,8 @@ Please extract all available financial information and structure it according to
             if self._rag_retriever:
                 logger.debug("Retrieving asset information via RAG")
 
-                risk_tolerance = financial_profile.get("risk_tolerance", "Conservative")
-                investment_experience = financial_profile.get(
-                    "investment_experience", "Beginner"
-                )
-                goals = financial_profile.get("primary_goals", "Savings")
-                time_horizon = financial_profile.get("long_term_goals", "None")
-                geographic_allocation = financial_profile.get(
-                    "geographic_allocation", "Global balanced"
-                )
-
                 query = self.rag_query_builder_prompt.format(
-                    risk_tolerance=risk_tolerance,
-                    investment_experience=investment_experience,
-                    time_horizon=time_horizon,
-                    financial_goals=goals,
-                    geographic_allocation=geographic_allocation,
+                    financial_profile=profile_json,
                 )
 
                 logger.debug("RAG query: %s", query)

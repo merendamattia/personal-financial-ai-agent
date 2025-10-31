@@ -16,16 +16,15 @@ def create_test_profile() -> dict:
         # Income Information
         "annual_income_range": "100k-150k",
         "income_stability": "stable",
-        "additional_income_sources": "Freelance consulting projects",
         # Expenses and Debts
         "monthly_expenses_range": "5k-7k",
         "major_expenses": "Mortgage (3k), Car payment (500), Insurance (300)",
         "total_debt": "250k-300k",
         "debt_types": "Mortgage, car loan",
         # Assets and Savings
-        "savings_amount": "50k-100k",
+        "monthly_savings_amount": "50k-100k",
         "emergency_fund_months": "6",
-        "investments": "Current: 150k in 401k, 50k in personal brokerage account",
+        "active_investments": "Current: 150k in 401k, 50k in personal brokerage account",
         "investment_experience": "intermediate",
         # Financial Goals
         "primary_goals": "Retirement planning, wealth building, home equity growth",
@@ -33,11 +32,8 @@ def create_test_profile() -> dict:
         "long_term_goals": "Retire by 60, have 2M in net worth",
         # Risk Profile
         "risk_tolerance": "moderate",
-        "risk_concerns": "Market volatility, inflation impact on retirement",
-        # Financial Knowledge
-        "financial_knowledge_level": "intermediate",
         # Investment Geography
-        "geographic_allocation": "Global balanced (70% USA, 30% International)",
+        "geographic_allocation": "Global balanced",
     }
     return profile
 

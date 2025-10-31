@@ -29,14 +29,11 @@ class TestFinancialProfileCreation:
             income_stability="moderate",
             monthly_expenses_range="2k-3k",
             total_debt="minimal",
-            savings_amount="20k",
+            monthly_savings_amount="20k",
             investment_experience="beginner",
             risk_tolerance="conservative",
-            financial_knowledge_level="beginner",
-            # Optional fields not set
         )
         assert profile.occupation == "None"
-        assert profile.additional_income_sources == "None"
         assert profile.summary_notes == "None"
 
     def test_geographic_allocation_default(self):
@@ -48,10 +45,9 @@ class TestFinancialProfileCreation:
             income_stability="stable",
             monthly_expenses_range="4k-5k",
             total_debt="minimal",
-            savings_amount="50k",
+            monthly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
-            financial_knowledge_level="intermediate",
         )
         assert profile.geographic_allocation == "Global balanced"
 
@@ -64,10 +60,9 @@ class TestFinancialProfileCreation:
             income_stability="stable",
             monthly_expenses_range="4k-5k",
             total_debt="minimal",
-            savings_amount="50k",
+            monthly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
-            financial_knowledge_level="intermediate",
             geographic_allocation="Emerging markets",
         )
         assert profile.geographic_allocation == "Emerging markets"
@@ -101,10 +96,9 @@ class TestFinancialProfileValidation:
                 income_stability=stability,
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance="moderate",
-                financial_knowledge_level="intermediate",
             )
             assert profile.income_stability == stability
 
@@ -118,10 +112,9 @@ class TestFinancialProfileValidation:
                 income_stability="stable",
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance=risk,
-                financial_knowledge_level="intermediate",
             )
             assert profile.risk_tolerance == risk
 
@@ -135,9 +128,8 @@ class TestFinancialProfileValidation:
                 income_stability="stable",
                 monthly_expenses_range="4k-5k",
                 total_debt="minimal",
-                savings_amount="50k",
+                monthly_savings_amount="50k",
                 investment_experience=exp,
                 risk_tolerance="moderate",
-                financial_knowledge_level="intermediate",
             )
             assert profile.investment_experience == exp
