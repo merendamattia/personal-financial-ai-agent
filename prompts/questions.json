@@ -14,23 +14,23 @@
     },
     {
       "id": 4,
-      "text": "Quali sono le tue spese mensili principali e stima la fascia totale? (ad esempio: affitto 1000€, totale 2500€)"
-    },
-    {
-      "id": 5,
-      "text": "Attualmente hai debiti? Se sì, quale importo approssimativo e che tipo? (mutuo, prestiti, carte di credito)"
-    },
-    {
-      "id": 6,
-      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
-    },
-    {
-      "id": 7,
       "text": "Quanto riesci a risparmiare al mese? (ad esempio: 200€)"
     },
     {
+      "id": 5,
+      "text": "Quali sono le tue spese mensili principali e stima la fascia totale? (ad esempio: affitto 1000€, totale 2500€)"
+    },
+    {
+      "id": 6,
+      "text": "Attualmente hai debiti? Se sì, quale importo approssimativo e che tipo? (mutuo, prestiti, carte di credito)"
+    },
+    {
+      "id": 7,
+      "text": "Hai familiari a carico e quali coperture assicurative hai? (coniuge, figli; salute, vita, casa, auto)"
+    },
+    {
       "id": 8,
-      "text": "Hai investimenti attivi? (azioni, ETF, immobili, ecc.)"
+      "text": "Hai investimenti attivi? Se sì, a quanto ammonta la cifra? (azioni, ETF, immobili, ecc.)"
     },
     {
       "id": 9,
@@ -38,7 +38,7 @@
     },
     {
       "id": 10,
-      "text": "Hey! Abbiamo quasi finito, giusto le ultime due domande! Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
+      "text": "Abbiamo quasi finito, giusto le ultime due domande! Come definisci la tua propensione al rischio e quali sono le tue preoccupazioni finanziarie? (conservatrice/moderata/aggressiva; volatilità, inflazione, etc.)"
     },
     {
       "id": 11,

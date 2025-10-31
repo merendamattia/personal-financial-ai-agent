@@ -12,8 +12,8 @@ The 19 fields are:
 7. major_expenses - Major recurring expenses (mortgage, rent, car payment)
 8. total_debt - Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k')
 9. debt_types - Types of debt (mortgage, credit card, student loans)
-10. savings_amount - Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+')
-11. investments - Investment portfolio details (stocks, ETFs, crypto)
+10. montly_savings_amount - Amount in savings (e.g., '0', '100', '250', '1k+')
+11. active_investments - Amount of active investments (stocks, ETFs, crypto)
 12. investment_experience - Investment experience (beginner, intermediate, advanced)
 13. goals - Primary financial goals
 14. risk_tolerance - Risk tolerance (conservative, moderate, aggressive)

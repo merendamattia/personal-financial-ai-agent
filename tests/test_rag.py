@@ -23,9 +23,9 @@ def create_test_profile() -> dict:
         "total_debt": "250k-300k",
         "debt_types": "Mortgage, car loan",
         # Assets and Savings
-        "savings_amount": "50k-100k",
+        "montly_savings_amount": "50k-100k",
         "emergency_fund_months": "6",
-        "investments": "Current: 150k in 401k, 50k in personal brokerage account",
+        "active_investments": "Current: 150k in 401k, 50k in personal brokerage account",
         "investment_experience": "intermediate",
         # Financial Goals
         "primary_goals": "Retirement planning, wealth building, home equity growth",

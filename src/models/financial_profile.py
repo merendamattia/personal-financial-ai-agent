@@ -56,13 +56,13 @@ class FinancialProfile(BaseModel):
     )
 
     # Assets and Savings
-    savings_amount: str = Field(
-        default="None",
+    montly_savings_amount: str = Field(
+        default="0",
         description="Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+', etc.)",
     )
-    investments: Optional[str] = Field(
+    active_investments: Optional[str] = Field(
         default="None",
-        description="Investment portfolio details (stocks, ETFs, crypto, etc.)",
+        description="Investment portfolio details in euros (stocks, ETFs, crypto, etc.)",
     )
     investment_experience: str = Field(
         default="Beginner",
