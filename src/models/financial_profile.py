@@ -32,10 +32,6 @@ class FinancialProfile(BaseModel):
         default="None",
         description="Income stability rating (e.g., 'stable', 'moderate', 'unstable')",
     )
-    additional_income_sources: Optional[str] = Field(
-        default="None",
-        description="Any additional income sources (investments, side business, etc.)",
-    )
 
     # Expenses and Debts
     monthly_expenses_range: str = Field(
@@ -79,9 +75,6 @@ class FinancialProfile(BaseModel):
     risk_tolerance: str = Field(
         default="Conservative",
         description="Risk tolerance level (conservative, moderate, aggressive)",
-    )
-    risk_concerns: Optional[str] = Field(
-        default="None", description="Any specific financial concerns or risks"
     )
 
     # Family and Insurance

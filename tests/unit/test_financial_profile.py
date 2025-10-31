@@ -32,11 +32,8 @@ class TestFinancialProfileCreation:
             montly_savings_amount="20k",
             investment_experience="beginner",
             risk_tolerance="conservative",
-            financial_knowledge_level="beginner",
-            # Optional fields not set
         )
         assert profile.occupation == "None"
-        assert profile.additional_income_sources == "None"
         assert profile.summary_notes == "None"
 
     def test_geographic_allocation_default(self):
@@ -51,7 +48,6 @@ class TestFinancialProfileCreation:
             montly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
-            financial_knowledge_level="intermediate",
         )
         assert profile.geographic_allocation == "Global balanced"
 
@@ -67,7 +63,6 @@ class TestFinancialProfileCreation:
             montly_savings_amount="50k",
             investment_experience="intermediate",
             risk_tolerance="moderate",
-            financial_knowledge_level="intermediate",
             geographic_allocation="Emerging markets",
         )
         assert profile.geographic_allocation == "Emerging markets"
@@ -104,7 +99,6 @@ class TestFinancialProfileValidation:
                 montly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance="moderate",
-                financial_knowledge_level="intermediate",
             )
             assert profile.income_stability == stability
 
@@ -121,7 +115,6 @@ class TestFinancialProfileValidation:
                 montly_savings_amount="50k",
                 investment_experience="intermediate",
                 risk_tolerance=risk,
-                financial_knowledge_level="intermediate",
             )
             assert profile.risk_tolerance == risk
 
@@ -138,6 +131,5 @@ class TestFinancialProfileValidation:
                 montly_savings_amount="50k",
                 investment_experience=exp,
                 risk_tolerance="moderate",
-                financial_knowledge_level="intermediate",
             )
             assert profile.investment_experience == exp
