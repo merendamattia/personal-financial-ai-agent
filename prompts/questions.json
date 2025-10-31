@@ -2,7 +2,7 @@
   "questions": [
     {
       "id": 1,
-      "text": "Ciao! 👋 Iniziamo con le informazioni personali. Quanti anni hai e che lavoro? (ad esempio: ho 30 anni e sono un impiegato)"
+      "text": "Ciao! 👋 Iniziamo con le informazioni personali. Quanti anni hai e che lavoro fai? (ad esempio: ho 30 anni e sono un impiegato)"
     },
     {
       "id": 2,
@@ -18,7 +18,7 @@
     },
     {
       "id": 5,
-      "text": "A quanto ammontano le tue spese mensili? Quali sono? (ad esempio: totale 1500€, di cui per la casa 700€, cibo 300€, trasporti 200€, tempo libero 300€)"
+      "text": "A quanto ammontano le tue spese mensili? Quali sono? (ad esempio: totale 1500€, di cui casa 700€, cibo 300€, trasporti 200€, tempo libero 300€)"
     },
     {
       "id": 6,
