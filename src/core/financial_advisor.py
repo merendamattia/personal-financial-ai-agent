@@ -86,13 +86,13 @@ class FinancialAdvisorAgent(BaseAgent):
 
     def _get_default_tools(self) -> list:
         """
-        Financial advisor has asset analysis tool.
+        Financial advisor has NO tools.
 
         Returns:
-            List with analyze_financial_asset tool
+            Empty list - no tools for Financial advisor
         """
         logger.debug("Setting up financial advisor tools")
-        return [analyze_financial_asset]
+        return []
 
     def _get_default_planning_interval(self) -> int:
         """
