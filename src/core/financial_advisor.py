@@ -66,6 +66,12 @@ class FinancialAdvisorAgent(BaseAgent):
         self.portfolio_extraction_prompt = self._load_prompt_template(
             "portfolio_extraction"
         )
+        self.financial_profile_extraction_prompt = self._load_prompt_template(
+            "financial_profile_extraction"
+        )
+        self.pac_metrics_extraction_prompt = self._load_prompt_template(
+            "pac_metrics_extraction"
+        )
 
         # Initialize RAG retriever for asset data
         logger.debug("Initializing RAG asset retriever")
@@ -145,41 +151,13 @@ class FinancialAdvisorAgent(BaseAgent):
         logger.debug("Extracting financial profile from summary")
 
         try:
-            extraction_prompt = f"""Extract ONLY the following 19 financial profile fields from the conversation summary.
-
-CRITICAL: Return ONLY these exact field names. Do NOT create any additional fields. Do NOT include fields like 'additional_income_source', 'risk_concern', 'family_dependent', or 'insurance_cover'.
-
-The 19 fields are:
-1. age_range - Age range (e.g., '25-34', '35-44', etc.)
-2. employment_status - Employment status (e.g., 'employed', 'self-employed', 'retired')
-3. annual_income_range - Income range (e.g., '30k-50k', '50k-100k', '100k+')
-4. income_stability - Income stability (e.g., 'stable', 'moderate', 'unstable')
-5. additional_income_sources - Additional income sources
-6. monthly_expenses_range - Monthly expenses range (e.g., '2k-3k', '3k-5k')
-7. major_expenses - Major recurring expenses (mortgage, rent, car payment)
-8. total_debt - Total outstanding debt (e.g., 'minimal', '10k-50k', '50k-100k')
-9. debt_types - Types of debt (mortgage, credit card, student loans)
-10. savings_amount - Amount in savings (e.g., 'none', '1k-5k', '5k-20k', '20k+')
-11. investments - Investment portfolio details (stocks, ETFs, crypto)
-12. investment_experience - Investment experience (beginner, intermediate, advanced)
-13. goals - Primary financial goals
-14. risk_tolerance - Risk tolerance (conservative, moderate, aggressive)
-15. risk_concerns - Specific financial concerns or risks
-16. geographic_allocation - Geographic investment preference
-17. family_dependents - Number of dependents or family situation
-18. insurance_coverage - Types of insurance coverage
-19. summary_notes - Any additional important notes
-
-For any field not mentioned in the conversation, use the default values provided by the schema.
-If information is not explicitly mentioned, do NOT fabricate values.
-
-Conversation Summary:
-{conversation_summary}
-
-Return ONLY these 21 fields exactly as named above. Do not create extra fields."""
+            extraction_prompt = self.financial_profile_extraction_prompt.format(
+                conversation_summary=conversation_summary
+            )
 
             logger.debug(
-                "Calling structured_response with StrictFinancialProfile model"
+                "Calling structured_response with FinancialProfile model with prompt: %s",
+                extraction_prompt,
             )
 
             try:
@@ -241,23 +219,13 @@ Return ONLY these 21 fields exactly as named above. Do not create extra fields."
         logger.debug("Extracting PAC metrics from financial profile")
 
         try:
-            extraction_prompt = f"""Extract the PAC (Piano di Accumulo del Capitale) metrics from this financial profile.
-
-Financial Profile:
-{json.dumps(financial_profile, indent=2)}
-
-Extract ONLY these 2 values:
-1. **initial_investment**: How much money the user has saved or can invest as a lump sum (in euros).
-   - Look at 'investments' field
-   - Convert ranges to numeric values: "1k-5k" → 3000, "5k-20k" → 12500, "20k+" → 30000
-
-2. **monthly_savings**: How much the user can save and invest monthly (in euros).
-   - Look at 'savings_amount' field
-   - Minimum 100 euros
-
-Return ONLY these 2 numeric values in the exact JSON structure required."""
-
-            logger.debug("Calling structured_response with PACMetrics model")
+            extraction_prompt = self.pac_metrics_extraction_prompt.format(
+                financial_profile=json.dumps(financial_profile, indent=2)
+            )
+            logger.debug(
+                "Calling structured_response with PACMetrics model with prompt: %s",
+                extraction_prompt,
+            )
 
             response = self._client.structured_response(
                 input=extraction_prompt,
