@@ -1,3 +1,15 @@
+## [1.3.1](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.0...v1.3.1) (2025-10-31)
+
+
+### Bug Fixes
+
+* refine wording in financial assessment questions for clarity ([38fe997](https://github.com/merendamattia/personal-financial-ai-agent/commit/38fe997b2facea63146ab52ca3ae70868dde8fe8))
+* remove assertions for occupation in financial profile tests ([b3a2180](https://github.com/merendamattia/personal-financial-ai-agent/commit/b3a2180055b4604aa97aa3c671606c7cba980a8a))
+* update debug log message for financial advisor tool initialization ([3e40623](https://github.com/merendamattia/personal-financial-ai-agent/commit/3e406234166b94f007b08960050910cb65553f70))
+* update financial advisor tools to reflect no available tools ([d4a975d](https://github.com/merendamattia/personal-financial-ai-agent/commit/d4a975dd7a3f6b188cf3c00e417b6befb44dbf07))
+* update financial assessment questions ([ac8aa7c](https://github.com/merendamattia/personal-financial-ai-agent/commit/ac8aa7c8b10b5a8d538885fc7a983ae3643ae95f))
+* update model configurations for Ollama and OpenAI ([#17](https://github.com/merendamattia/personal-financial-ai-agent/issues/17)) ([4714d66](https://github.com/merendamattia/personal-financial-ai-agent/commit/4714d664be73d1b356f2cab6bf46a821af858d4b))
+
 # [1.3.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.2.0...v1.3.0) (2025-10-31)
 
 
