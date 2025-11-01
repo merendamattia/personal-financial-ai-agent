@@ -30,7 +30,7 @@ Generate a well-balanced, customized investment portfolio that:
 10. Geographic reasoning: Include in justification why specific geographic regions were chosen based on client profile
 
 ## Critical Requirements:
-- Each asset must have a specific justification based on the client's profile
+- Each asset must have a specific justification based on the client's profile, INCLUDE also the complete name (not only the ticker) of the asset at the start of justification
 - Conservative investors: Include protective assets like bonds
 - Moderate investors: Balance growth and stability
 - Aggressive investors: Focus on growth assets with minimal bonds
