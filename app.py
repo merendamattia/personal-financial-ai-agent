@@ -492,10 +492,7 @@ def _show_provider_selection():
     """
     logger.debug("No provider selected, showing provider selection modal")
 
-    st.title("💰 Financial AI Agent")
-    st.markdown("Your personal financial advisor powered by AI")
-
-    st.divider()
+    _show_header()
     st.subheader("🔧 Select Your LLM Provider")
     st.markdown(
         "Choose which AI service to use for this conversation. You can change this anytime."
@@ -554,6 +551,25 @@ def _show_provider_selection():
     )
 
 
+def _show_header():
+    """
+    Display the application header.
+    """
+    st.title("💰 Financial AI Agent")
+    st.markdown(
+        "An intelligent personal financial advisor powered by AI. Get expert financial guidance in your preferred language with support for multiple LLM providers, including local offline inference with Ollama."
+    )
+
+    st.markdown(
+        """
+        [![GitHub](https://img.shields.io/badge/GitHub-merendamattia%2Fpersonal--financial--ai--agent-black?logo=github)](https://github.com/merendamattia/personal-financial-ai-agent)
+        [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+        [![Latest Release](https://img.shields.io/github/v/release/merendamattia/personal-financial-ai-agent?label=release)](https://github.com/merendamattia/personal-financial-ai-agent/releases)
+        """
+    )
+    st.divider()
+
+
 def _show_loading_screen():
     """
     Display loading screen while initializing agent.
@@ -563,10 +579,7 @@ def _show_loading_screen():
     """
     logger.debug("Agent not yet initialized, showing loading screen")
 
-    st.title("💰 Financial AI Agent")
-    st.markdown("Your personal financial advisor powered by AI")
-
-    st.divider()
+    _show_header()
 
     # Loading animation
     loading_col1, loading_col2, loading_col3 = st.columns([1, 2, 1])
@@ -732,8 +745,7 @@ def _display_financial_profile_summary():
     """
     if st.session_state.financial_profile:
         logger.debug("Displaying extracted financial profile")
-        st.divider()
-        st.subheader("📊 Financial Profile Summary")
+        st.subheader("Financial Profile Summary")
 
         # Convert profile to dictionary for display
         profile_dict = st.session_state.financial_profile.model_dump()
@@ -835,8 +847,8 @@ def _display_expected_returns(portfolio, financial_advisor_agent):
         return
 
     # Display disclaimer about past performance
-    st.info(
-        "⚠️ **Important:** I rendimenti passati non sono indicatori affidabili dei rendimenti futuri. "
+    st.warning(
+        "⚠️ **Importante:** I rendimenti passati non sono indicatori affidabili dei rendimenti futuri. "
         "Queste proiezioni si basano su medie storiche e possono variare significativamente."
     )
 
@@ -1590,8 +1602,7 @@ def main():
         st.rerun()
 
     # Header
-    st.title("💰 Financial AI Agent")
-    st.markdown("Your personal financial advisor powered by AI")
+    _show_header()
 
     # Sidebar
     _setup_sidebar(chatbot_agent, financial_advisor_agent)
@@ -1629,14 +1640,11 @@ def main():
 
     # Show message if conversation is completed
     if st.session_state.conversation_completed:
-        logger.debug("Conversation is completed, showing completion message")
-        st.info(
-            "**Assessment completed!** All your financial questions have been answered and the summary has been provided. "
-            "Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over."
+        st.toast(
+            "Analyzing profile and generating portfolio...", icon="🔄", duration="long"
         )
 
-        # Display financial profile
-        _display_financial_profile_summary()
+        logger.debug("Conversation is completed")
 
         # Generate and display portfolio
         if st.session_state.financial_profile:
@@ -1660,7 +1668,6 @@ def main():
                     if portfolio:
                         st.session_state.generated_portfolio = portfolio
                         logger.info("Portfolio auto-generated successfully")
-                        st.rerun()
                     else:
                         logger.warning("Failed to generate portfolio")
                         st.error(
@@ -1676,7 +1683,6 @@ def main():
                             )
                             if portfolio:
                                 st.session_state.generated_portfolio = portfolio
-                                st.rerun()
             else:
                 logger.debug("Portfolio already generated, displaying...")
 
@@ -1688,6 +1694,34 @@ def main():
                 _display_portfolio_details(
                     st.session_state.generated_portfolio, financial_advisor_agent
                 )
+
+                # Show completion message after portfolio
+                st.divider()
+                st.toast(
+                    "Assessment Completed Successfully! Your personalized portfolio analysis is ready.",
+                    icon="🎉",
+                    duration="long",
+                )
+
+                # Celebration animation and message
+                st.balloons()
+                st.success(
+                    "🎉 **Assessment Completed Successfully!** 🎉\n\n"
+                    "All your financial questions have been answered and your personalized portfolio analysis is ready! "
+                    "Your financial profile and PAC metrics have been extracted and analyzed."
+                )
+
+                # Financial Profile in an expanded section
+                with st.expander(
+                    "📊 View Your Financial Profile & Summary", expanded=False
+                ):
+                    _display_financial_profile_summary()
+                    st.info(
+                        "💡 **Next Steps:**\n"
+                        "- Review your portfolio allocation above\n"
+                        "- Consider consulting with a financial advisor for personalized advice\n"
+                        "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
+                    )
 
         else:
             logger.debug("No financial profile available to display")
