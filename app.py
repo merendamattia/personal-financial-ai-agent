@@ -29,6 +29,9 @@ MONTECARLO_SIMULATION_SCENARIOS = int(
     os.getenv("MONTECARLO_SIMULATION_SCENARIOS", 1000)
 )
 MONTECARLO_SIMULATION_YEARS = int(os.getenv("MONTECARLO_SIMULATION_YEARS", 20))
+MONTECARLO_DEFAULT_INITIAL_INVESTMENT = int(
+    os.getenv("MONTECARLO_DEFAULT_INITIAL_INVESTMENT", 1000)
+)
 
 # Configure logging
 logging.basicConfig(
@@ -1141,9 +1144,9 @@ def _display_wealth_simulation(
                 # Check if initial_investment is 0 and replace with symbolic value
                 if initial_investment == 0:
                     logger.warning(
-                        "PAC SECTION - Initial investment is 0, using symbolic value of €1000"
+                        f"PAC SECTION - Initial investment is 0, using symbolic value of €{MONTECARLO_DEFAULT_INITIAL_INVESTMENT}"
                     )
-                    initial_investment = 1000
+                    initial_investment = MONTECARLO_DEFAULT_INITIAL_INVESTMENT
 
                 time_steps = MONTECARLO_SIMULATION_YEARS * 12  # Monthly steps
 
@@ -1649,9 +1652,12 @@ def main():
 
     # Show message if conversation is completed
     if st.session_state.conversation_completed:
-        st.toast(
-            "Analyzing profile and generating portfolio...", icon="🔄", duration="long"
-        )
+        if not st.session_state.generated_portfolio:
+            st.toast(
+                "Analyzing profile and generating portfolio...",
+                icon="🔄",
+                duration="long",
+            )
 
         logger.debug("Conversation is completed")
 
