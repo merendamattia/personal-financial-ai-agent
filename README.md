@@ -113,7 +113,7 @@ Choose your preferred AI provider based on your needs:
   1. Create account and get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
   2. Set `OPENAI_API_KEY` in `.env`
 - **Configuration:**
-  - `OPENAI_MODEL` in `.env` (default: `gpt-4o-mini`)
+  - `OPENAI_MODEL` in `.env` (default: `gpt-4.1-mini`)
 
 **Provider Selection:**
 The app detects available providers from your `.env` configuration. Select your preferred provider when starting the app or switch anytime using the sidebar button.
