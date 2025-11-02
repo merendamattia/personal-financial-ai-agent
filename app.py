@@ -1144,7 +1144,8 @@ def _display_wealth_simulation(
                 # Check if initial_investment is 0 and replace with symbolic value
                 if initial_investment == 0:
                     logger.warning(
-                        f"PAC SECTION - Initial investment is 0, using symbolic value of €{MONTECARLO_DEFAULT_INITIAL_INVESTMENT}"
+                        "PAC SECTION - Initial investment is 0, using symbolic value of €%s",
+                        MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
                     )
                     initial_investment = MONTECARLO_DEFAULT_INITIAL_INVESTMENT
 
