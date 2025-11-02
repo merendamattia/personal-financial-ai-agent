@@ -1138,6 +1138,13 @@ def _display_wealth_simulation(
                         monthly_contribution,
                     )
 
+                # Check if initial_investment is 0 and replace with symbolic value
+                if initial_investment == 0:
+                    logger.warning(
+                        "PAC SECTION - Initial investment is 0, using symbolic value of €1000"
+                    )
+                    initial_investment = 1000
+
                 time_steps = MONTECARLO_SIMULATION_YEARS * 12  # Monthly steps
 
                 # Run Monte Carlo simulation
