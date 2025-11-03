@@ -42,12 +42,14 @@ if not OLLAMA_API_URL.endswith("/v1"):
 
 
 # Modello LLM (Generazione) dal .env
-# LLM_MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:0.6b")
-LLM_MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3:8b")
+LLM_MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:0.6b")
+# LLM_MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3:8b")
 
 # Modello Embedding (Retrieval) - Locale via Ollama
-EMBEDDING_MODEL_NAME = "nomic-embed-text"
-EMBEDDING_DIMS = 768
+# EMBEDDING_MODEL_NAME = "nomic-embed-text"
+EMBEDDING_MODEL_NAME = "mxbai-embed-large"
+# EMBEDDING_DIMS = 768
+EMBEDDING_DIMS = 1024
 
 # Qdrant locale
 DEFAULT_COLLECTION = "my_documents"
