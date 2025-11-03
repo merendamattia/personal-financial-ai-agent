@@ -1,3 +1,17 @@
+## [1.3.2](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.1...v1.3.2) (2025-11-03)
+
+
+### Bug Fixes
+
+* add support for SGLD asset symbol in financial analysis tool ([efd0c7e](https://github.com/merendamattia/personal-financial-ai-agent/commit/efd0c7e71515badd3e83e99122437f2fcdf0a80c))
+* add unzip utility to Dockerfile for dataset extraction ([b2b5d86](https://github.com/merendamattia/personal-financial-ai-agent/commit/b2b5d86fe2844e852445ebadd4b4c07b805cf18e))
+* clarify conservative allocation guidelines for investment portfolios ([7b1f4d1](https://github.com/merendamattia/personal-financial-ai-agent/commit/7b1f4d19c6f4058ecf2c8eca6f7a411b3beb0e6f))
+* handle zero initial investment in wealth simulation by using a symbolic value ([b067ca9](https://github.com/merendamattia/personal-financial-ai-agent/commit/b067ca9b54d8e0cec69190a0d59b7e7ec97f44be))
+* improve logging for zero initial investment in wealth simulation ([54de145](https://github.com/merendamattia/personal-financial-ai-agent/commit/54de145626937c22ee29c6952fee5304a526e764))
+* update asset symbol handling in wealth simulation function ([afa2085](https://github.com/merendamattia/personal-financial-ai-agent/commit/afa2085e95bb38639a209f11e883414e26c1d865))
+* update Monte Carlo simulation to use configurable initial investment value ([c38a9d3](https://github.com/merendamattia/personal-financial-ai-agent/commit/c38a9d3baeaf4681dd18856dc66563f9452a15eb))
+* update portfolio justification requirements to include full asset names ([3ee53a0](https://github.com/merendamattia/personal-financial-ai-agent/commit/3ee53a0eb14bb8c7ca8b8178ebd8330e351725c1))
+
 ## [1.3.1](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.0...v1.3.1) (2025-10-31)
 
 
