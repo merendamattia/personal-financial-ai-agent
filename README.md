@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Latest Release](https://img.shields.io/github/v/release/merendamattia/personal-financial-ai-agent?label=release)](https://github.com/merendamattia/personal-financial-ai-agent/releases)
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-personal--financial--ai--agent-blue?logo=docker)](https://hub.docker.com/repository/docker/merendamattia/personal-financial-ai-agent)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 
 An intelligent personal financial advisor powered by AI. Get expert financial guidance in your preferred language with support for multiple LLM providers, including local offline inference with Ollama.
@@ -112,7 +113,7 @@ Choose your preferred AI provider based on your needs:
   1. Create account and get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
   2. Set `OPENAI_API_KEY` in `.env`
 - **Configuration:**
-  - `OPENAI_MODEL` in `.env` (default: `gpt-4o-mini`)
+  - `OPENAI_MODEL` in `.env` (default: `gpt-4.1-mini`)
 
 **Provider Selection:**
 The app detects available providers from your `.env` configuration. Select your preferred provider when starting the app or switch anytime using the sidebar button.

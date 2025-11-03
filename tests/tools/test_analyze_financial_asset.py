@@ -24,6 +24,7 @@ def main():
 
     # Test cases: (symbol, years)
     test_cases = [
+        ("SGLD", 7),
         ("SWDA", 5),
         ("CSSPX", 3),
         ("ISAC", 4),

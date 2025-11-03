@@ -21,7 +21,9 @@ Generate a well-balanced, customized investment portfolio that:
 1. Maximum 3-5 assets to maintain simplicity and manageability
 2. All allocations must sum to 100%
 3. Minimum 10% in bonds (unless explicitly overridden by risk profile)
-4. Conservative allocation for specific profiles: if client is over 45 years old, has significant debts, or has dependents/family members to support, consider allocating at least 50% to bonds for capital preservation and stability
+4. Conservative allocation for specific profiles:
+    - If client is over 45 years old, has significant debts, or has dependents/family members to support, consider allocating at least 50% to bonds for capital preservation and stability.
+    - If client is under 45 years old, consider allocating at least 30% in stocks, while still maintaining a minimum bond allocation of 10% for portfolio stability as required above.
 5. Conservative portfolios: Include Gold (precious metals hedge) as 5-10% allocation (write only GOLD, do not use any other assets name)
 6. Aggressive portfolios: Consider Bitcoin (5-15%) for growth diversification (write only BITCOIN, do not use any other assets name)
 7. Each asset must have explicit justification based on the client's profile
@@ -30,7 +32,7 @@ Generate a well-balanced, customized investment portfolio that:
 10. Geographic reasoning: Include in justification why specific geographic regions were chosen based on client profile
 
 ## Critical Requirements:
-- Each asset must have a specific justification based on the client's profile
+- Each asset must have a specific justification based on the client's profile, INCLUDE also the complete name (not only the ticker) of the asset at the start of justification
 - Conservative investors: Include protective assets like bonds
 - Moderate investors: Balance growth and stability
 - Aggressive investors: Focus on growth assets with minimal bonds
