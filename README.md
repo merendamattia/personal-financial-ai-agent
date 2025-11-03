@@ -77,8 +77,13 @@ Access at http://localhost:8501
 
 **Docker (without Ollama):**
 ```bash
+# Option 1: Build locally
 docker build --no-cache -t financial-ai-agent:local .
 docker run -p 8501:8501 --env-file .env financial-ai-agent:local
+
+# Option 2: Use pre-built image from Docker Hub
+docker pull merendamattia/personal-financial-ai-agent:latest
+docker run -p 8501:8501 --env-file .env merendamattia/personal-financial-ai-agent:latest
 ```
 
 > **Note:** On first launch, you'll be prompted to select your preferred LLM provider.
