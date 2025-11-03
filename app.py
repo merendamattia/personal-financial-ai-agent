@@ -1022,7 +1022,7 @@ def _display_wealth_simulation(
                     try:
                         if asset_symbol.upper() == "BITCOIN":
                             asset_symbol = "BTC-EUR"
-                        if asset_symbol.upper() == "GOLD":
+                        elif asset_symbol.upper() == "GOLD":
                             asset_symbol = "SGLD"
 
                         result_data = financial_advisor_agent.analyze_asset(
