@@ -5,6 +5,7 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install
@@ -20,6 +21,9 @@ COPY src/ src/
 COPY prompts/ prompts/
 COPY dataset/ dataset/
 COPY .env.example .env
+
+# Unzip dataset
+RUN cd dataset && unzip ETFs.zip && rm ETFs.zip
 
 # Create non-root user for security
 RUN useradd -m -u 1000 streamlit && chown -R streamlit:streamlit /app
