@@ -538,9 +538,7 @@ def _show_provider_selection():
 
     with col2:
         if "google" in available_providers:
-            if st.button(
-                "🌐 Google Gemini", use_container_width=True, key="google_btn"
-            ):
+            if st.button("🌐 Google Gemini", use_container_width=True, key="google_btn"):
                 logger.info("Google provider selected")
                 st.session_state.provider = "google"
                 st.session_state.agent_initialized = False
@@ -756,9 +754,7 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.profile_loaded_from_json
             and not st.session_state.conversation_completed
         ):
-            if st.button(
-                "🔍 Analyze Profile", use_container_width=True, type="primary"
-            ):
+            if st.button("🔍 Analyze Profile", use_container_width=True, type="primary"):
                 logger.info("User triggered profile analysis")
                 st.session_state.conversation_completed = True
                 st.session_state.generated_portfolio = None
@@ -1894,9 +1890,9 @@ def main():
                                 ) or initialize_financial_advisor(
                                     st.session_state.provider
                                 )
-                                st.session_state["financial_advisor_agent"] = (
-                                    financial_advisor_agent
-                                )
+                                st.session_state[
+                                    "financial_advisor_agent"
+                                ] = financial_advisor_agent
 
                                 financial_profile = (
                                     financial_advisor_agent.extract_financial_profile(
