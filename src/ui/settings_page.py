@@ -91,6 +91,19 @@ def _test_ollama_connection(base_url: str, model: str) -> tuple[bool, str]:
     """
     try:
         import requests
+        from urllib.parse import urlparse
+        
+        # Validate URL to prevent SSRF attacks
+        parsed = urlparse(base_url)
+        
+        # Only allow http and https schemes
+        if parsed.scheme not in ('http', 'https'):
+            return False, "❌ Invalid URL scheme. Only http and https are allowed."
+        
+        # Only allow specific hosts for Ollama (localhost, 127.0.0.1, or 'ollama' docker hostname)
+        allowed_hosts = ['localhost', '127.0.0.1', 'ollama', '0.0.0.0']
+        if parsed.hostname not in allowed_hosts:
+            return False, "❌ Only localhost or docker 'ollama' hostname are allowed for security."
         
         # Remove /v1 suffix if present for the health check
         health_url = base_url.replace("/v1", "")
@@ -143,6 +156,8 @@ def _apply_settings():
     in production, consider refactoring to pass credentials directly to client
     constructors instead of via environment variables.
     """
+    from urllib.parse import urlparse
+    
     config = st.session_state.settings_config
     
     # Update environment variables (maintaining consistency with existing architecture)
@@ -156,8 +171,19 @@ def _apply_settings():
     if config.get("google_model"):
         os.environ["GOOGLE_MODEL"] = config["google_model"]
     
+    # Validate Ollama URL before applying to prevent SSRF
     if config.get("ollama_base_url"):
-        os.environ["OLLAMA_API_URL"] = config["ollama_base_url"]
+        ollama_url = config["ollama_base_url"]
+        try:
+            parsed = urlparse(ollama_url)
+            allowed_hosts = ['localhost', '127.0.0.1', 'ollama', '0.0.0.0']
+            if parsed.scheme in ('http', 'https') and parsed.hostname in allowed_hosts:
+                os.environ["OLLAMA_API_URL"] = ollama_url
+            else:
+                logger.warning("Invalid Ollama URL not applied: %s", ollama_url)
+        except Exception as e:
+            logger.error("Failed to validate Ollama URL: %s", str(e))
+    
     if config.get("ollama_model"):
         os.environ["OLLAMA_MODEL"] = config["ollama_model"]
     
