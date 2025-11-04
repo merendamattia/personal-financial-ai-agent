@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
+from src.export import PortfolioPDFExporter
 from src.models import FinancialProfile, Portfolio
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
@@ -1477,6 +1478,85 @@ def _display_wealth_simulation(
         st.warning("Could not generate wealth simulation. Please try again later.")
 
 
+def _display_pdf_export_section(
+    portfolio, financial_profile, provider, chatbot_agent
+):
+    """
+    Display PDF export section with download button.
+
+    Args:
+        portfolio: The portfolio dictionary
+        financial_profile: The FinancialProfile object
+        provider: The LLM provider name
+        chatbot_agent: The ChatbotAgent instance
+
+    Returns:
+        None (displays UI components)
+    """
+    logger.debug("Displaying PDF export section")
+
+    st.markdown("### 📄 Export Portfolio Analysis")
+
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.markdown(
+            "Download your complete portfolio analysis as a professional PDF document. "
+            "The PDF includes your financial profile, portfolio recommendations, risk analysis, and important disclaimers."
+        )
+
+    with col2:
+        # Get model info
+        config = chatbot_agent.get_config_summary()
+        model_name = config.get("model", "Unknown")
+
+        try:
+            # Initialize PDF exporter
+            pdf_exporter = PortfolioPDFExporter()
+
+            # Convert FinancialProfile to dict if needed
+            profile_dict = None
+            if financial_profile:
+                profile_dict = (
+                    financial_profile.model_dump()
+                    if hasattr(financial_profile, "model_dump")
+                    else financial_profile
+                )
+
+            # Generate PDF
+            pdf_bytes = pdf_exporter.generate_pdf(
+                portfolio=portfolio,
+                financial_profile=profile_dict,
+                provider=provider.upper() if provider else "AI",
+                model=model_name,
+            )
+
+            # Generate filename
+            filename = pdf_exporter.generate_filename()
+
+            # Download button
+            st.download_button(
+                label="📥 Export as PDF",
+                data=pdf_bytes,
+                file_name=filename,
+                mime="application/pdf",
+                use_container_width=True,
+                type="primary",
+            )
+
+            logger.info("PDF export button displayed successfully")
+
+        except Exception as e:
+            logger.error("Failed to generate PDF: %s", str(e), exc_info=True)
+            st.error(f"Failed to generate PDF: {str(e)}")
+
+    # Privacy notice
+    st.info(
+        "🔒 **Privacy Notice:** The exported PDF contains your sensitive financial information. "
+        "Please store it securely and only share with trusted advisors."
+    )
+
+
 def _display_portfolio_details(portfolio, financial_advisor_agent):
     """
     Display all portfolio details including allocation, strategy, risk level, and returns.
@@ -1709,6 +1789,15 @@ def main():
             ):
                 _display_portfolio_details(
                     st.session_state.generated_portfolio, financial_advisor_agent
+                )
+
+                # Add PDF export button
+                st.divider()
+                _display_pdf_export_section(
+                    st.session_state.generated_portfolio,
+                    st.session_state.financial_profile,
+                    st.session_state.provider,
+                    chatbot_agent,
                 )
 
                 # Show completion message after portfolio
