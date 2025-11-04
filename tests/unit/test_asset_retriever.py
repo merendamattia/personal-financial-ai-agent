@@ -69,135 +69,136 @@ class TestRAGAssetRetrieverChunking:
 
 
 class TestRAGAssetRetrieverEmbedding:
-    """Tests for embedding model loading."""
+    """Tests for datapizza-ai FastEmbedder loading."""
 
-    @patch("src.retrieval.asset_retriever.SentenceTransformer")
-    def test_load_embedder(self, mock_transformer):
-        """Test that embedder is loaded correctly."""
+    @patch("src.retrieval.asset_retriever.FastEmbedder")
+    def test_get_embedder(self, mock_embedder_class):
+        """Test that FastEmbedder is loaded correctly."""
         # Reset global cache to ensure mock is called
         import src.retrieval.asset_retriever as ar_module
 
-        original_model = ar_module._embedding_model
-        ar_module._embedding_model = None
+        original_embedder = ar_module._embedder
+        ar_module._embedder = None
 
         try:
-            mock_model = MagicMock()
-            mock_transformer.return_value = mock_model
-
-            embedder = RAGAssetRetriever._load_embedder()
+            mock_embedder = MagicMock()
+            mock_embedder_class.return_value = mock_embedder
+            
+            retriever = RAGAssetRetriever()
+            embedder = retriever._get_embedder()
 
             assert embedder is not None
-            assert embedder is mock_model
-            mock_transformer.assert_called_once()
+            assert embedder is mock_embedder
+            mock_embedder_class.assert_called_once()
         finally:
-            # Restore original model
-            ar_module._embedding_model = original_model
+            # Restore original embedder
+            ar_module._embedder = original_embedder
 
     def test_embedder_caching(self):
-        """Test that embedder model is cached in global variable."""
+        """Test that FastEmbedder is cached in global variable."""
         # Reset global cache
         import src.retrieval.asset_retriever as ar_module
 
-        original_model = ar_module._embedding_model
-        ar_module._embedding_model = None
+        original_embedder = ar_module._embedder
+        ar_module._embedder = None
 
         try:
             with patch(
-                "src.retrieval.asset_retriever.SentenceTransformer"
-            ) as mock_transformer:
-                mock_model = MagicMock()
-                mock_transformer.return_value = mock_model
+                "src.retrieval.asset_retriever.FastEmbedder"
+            ) as mock_embedder_class:
+                mock_embedder = MagicMock()
+                mock_embedder_class.return_value = mock_embedder
+                
+                retriever = RAGAssetRetriever()
 
-                # Load embedder twice
-                embedder1 = RAGAssetRetriever._load_embedder()
-                embedder2 = RAGAssetRetriever._load_embedder()
+                # Get embedder twice
+                embedder1 = retriever._get_embedder()
+                embedder2 = retriever._get_embedder()
 
-                # Should only call transformer once due to global caching
-                assert mock_transformer.call_count == 1
+                # Should only call FastEmbedder once due to global caching
+                assert mock_embedder_class.call_count == 1
                 assert embedder1 is embedder2
-                assert embedder1 is mock_model
+                assert embedder1 is mock_embedder
         finally:
-            # Restore original model
-            ar_module._embedding_model = original_model
+            # Restore original embedder
+            ar_module._embedder = original_embedder
 
 
 class TestRAGAssetRetrieverRetrieval:
-    """Tests for document retrieval functionality with Qdrant."""
+    """Tests for document retrieval with datapizza-ai vectorstore."""
 
-    def test_retrieve_with_mock_qdrant(self, sample_rag_documents):
-        """Test retrieval with mocked Qdrant client."""
+    def test_retrieve_with_mock_vectorstore(self, sample_rag_documents):
+        """Test retrieval with mocked datapizza-ai vectorstore."""
+        from datapizza.type.type import Chunk
+        
         retriever = RAGAssetRetriever()
-
-        # Mark as indexed to skip build_or_load_index
         retriever._is_indexed = True
 
-        # Mock Qdrant client
-        mock_qdrant = MagicMock()
-        retriever._qdrant_client = mock_qdrant
+        # Mock vectorstore and embedder
+        mock_vectorstore = MagicMock()
+        mock_embedder = MagicMock()
+        
+        retriever._vectorstore = mock_vectorstore
+        retriever._embedder = mock_embedder
 
-        # Create mock search results
-        mock_results = []
-        for i, doc in enumerate(sample_rag_documents[:2]):  # Return top 2
-            mock_result = MagicMock()
-            mock_result.payload = {
-                "doc_id": doc["id"],
-                "source": doc["source"],
-                "text": doc["text"]
-            }
-            mock_result.score = doc["score"]
-            mock_results.append(mock_result)
+        # Mock embedder response
+        mock_embedder.embed.return_value = [[0.1] * 384]  # Mock embedding
 
-        mock_qdrant.search.return_value = mock_results
+        # Create mock Chunk results
+        mock_chunks = []
+        for doc in sample_rag_documents[:2]:
+            chunk = Chunk(
+                id=doc["id"],
+                text=doc["text"],
+                metadata={"source": doc["source"]}
+            )
+            mock_chunks.append(chunk)
 
-        # Patch the embedder
-        with patch.object(retriever, "_load_embedder") as mock_embedder:
-            mock_encoder = MagicMock()
-            mock_encoder.encode.return_value = np.random.randn(1, 384)
-            mock_embedder.return_value = mock_encoder
+        mock_vectorstore.search.return_value = mock_chunks
 
-            results = retriever.retrieve("test query", k=2)
+        results = retriever.retrieve("test query", k=2)
 
-            assert len(results) == 2
-            assert all("id" in doc for doc in results)
-            assert all("score" in doc for doc in results)
-            # Verify Qdrant search was called
-            mock_qdrant.search.assert_called_once()
+        assert len(results) == 2
+        assert all("id" in doc for doc in results)
+        assert all("score" in doc for doc in results)
+        mock_vectorstore.search.assert_called_once()
 
     def test_retrieve_k_limit(self, sample_rag_documents):
         """Test that retrieval respects k limit."""
+        from datapizza.type.type import Chunk
+        
         retriever = RAGAssetRetriever()
         retriever._is_indexed = True
 
-        # Mock Qdrant client
-        mock_qdrant = MagicMock()
-        retriever._qdrant_client = mock_qdrant
+        # Mock vectorstore and embedder
+        mock_vectorstore = MagicMock()
+        mock_embedder = MagicMock()
+        
+        retriever._vectorstore = mock_vectorstore
+        retriever._embedder = mock_embedder
 
-        def mock_search(collection_name, query_vector, limit):
-            """Mock search that respects k limit."""
-            mock_results = []
-            for i, doc in enumerate(sample_rag_documents[:limit]):
-                mock_result = MagicMock()
-                mock_result.payload = {
-                    "doc_id": doc["id"],
-                    "source": doc["source"],
-                    "text": doc["text"]
-                }
-                mock_result.score = doc["score"]
-                mock_results.append(mock_result)
-            return mock_results
+        # Mock embedder response
+        mock_embedder.embed.return_value = [[0.1] * 384]
 
-        mock_qdrant.search.side_effect = mock_search
+        def mock_search(collection_name, query_vector, k):
+            """Return k chunks."""
+            chunks = []
+            for doc in sample_rag_documents[:k]:
+                chunk = Chunk(
+                    id=doc["id"],
+                    text=doc["text"],
+                    metadata={"source": doc["source"]}
+                )
+                chunks.append(chunk)
+            return chunks
 
-        with patch.object(retriever, "_load_embedder") as mock_embedder:
-            mock_encoder = MagicMock()
-            mock_encoder.encode.return_value = np.random.randn(1, 384)
-            mock_embedder.return_value = mock_encoder
+        mock_vectorstore.search.side_effect = mock_search
 
-            results = retriever.retrieve("query", k=2)
-            assert len(results) == 2
+        results = retriever.retrieve("query", k=2)
+        assert len(results) == 2
 
-            results_one = retriever.retrieve("query", k=1)
-            assert len(results_one) == 1
+        results_one = retriever.retrieve("query", k=1)
+        assert len(results_one) == 1
 
 
 class TestRAGAssetRetrieverDocumentProcessing:
@@ -221,11 +222,14 @@ class TestRAGAssetRetrieverDocumentProcessing:
 
 
 class TestRAGAssetRetrieverIntegration:
-    """Integration tests for RAG retriever with Qdrant."""
+    """Integration tests for RAG retriever with datapizza-ai."""
 
-    def test_retrieve_with_mocked_qdrant(self):
-        """Test retrieve function with mocked Qdrant client."""
+    def test_retrieve_with_mocked_vectorstore(self):
+        """Test retrieve function with mocked datapizza-ai components."""
+        from datapizza.type.type import Chunk
+        
         retriever = RAGAssetRetriever()
+        retriever._is_indexed = True
 
         # Mock documents
         mock_docs = [
@@ -234,39 +238,34 @@ class TestRAGAssetRetrieverIntegration:
             {"id": "3", "text": "Treasury bonds and yields", "source": "treasury.pdf"},
         ]
 
-        # Mark as indexed and set up Qdrant mock
-        retriever._is_indexed = True
-        mock_qdrant = MagicMock()
-        retriever._qdrant_client = mock_qdrant
+        # Mock vectorstore and embedder
+        mock_vectorstore = MagicMock()
+        mock_embedder = MagicMock()
+        
+        retriever._vectorstore = mock_vectorstore
+        retriever._embedder = mock_embedder
 
-        # Mock search results - return docs sorted by relevance
-        def mock_search(collection_name, query_vector, limit):
-            results = []
-            for i, doc in enumerate(mock_docs[:limit]):
-                mock_result = MagicMock()
-                mock_result.payload = {
-                    "doc_id": doc["id"],
-                    "source": doc["source"],
-                    "text": doc["text"]
-                }
-                # Higher score for first doc (most similar to "bonds" query)
-                mock_result.score = 0.9 - (i * 0.1)
-                results.append(mock_result)
-            return results
+        # Mock embedder response
+        mock_embedder.embed.return_value = [[0.1] * 384]
 
-        mock_qdrant.search.side_effect = mock_search
+        # Create mock search results (return first 2 docs)
+        def mock_search(collection_name, query_vector, k):
+            chunks = []
+            for doc in mock_docs[:k]:
+                chunk = Chunk(
+                    id=doc["id"],
+                    text=doc["text"],
+                    metadata={"source": doc["source"]}
+                )
+                chunks.append(chunk)
+            return chunks
 
-        with patch.object(retriever, "_load_embedder") as mock_embedder:
-            mock_model = MagicMock()
-            mock_embedder.return_value = mock_model
-            # Query embedding similar to first document
-            mock_model.encode.return_value = np.array([[0.1, 0.2, 0.3]])
+        mock_vectorstore.search.side_effect = mock_search
 
-            results = retriever.retrieve("I want bonds", k=2)
+        results = retriever.retrieve("I want bonds", k=2)
 
-            # Should return documents with similarity scores
-            assert len(results) == 2
-            assert all("score" in d for d in results)
-            assert all("text" in d for d in results)
-            # Verify Qdrant was used
-            mock_qdrant.search.assert_called()
+        # Should return documents with similarity scores
+        assert len(results) == 2
+        assert all("score" in d for d in results)
+        assert all("text" in d for d in results)
+        mock_vectorstore.search.assert_called()

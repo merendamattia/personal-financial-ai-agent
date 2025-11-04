@@ -1,23 +1,20 @@
-"""RAG Asset Retriever Module.
+"""RAG Asset Retriever Module using Datapizza-AI.
 
 This module provides the RAGAssetRetriever class for semantic search
 over ETF/asset PDFs in the dataset directory using datapizza-ai's
-Qdrant vector store for efficient semantic search.
+native RAG implementation with QdrantVectorstore and FastEmbedder.
 """
 
 import logging
-import math
 import os
-import pickle
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import numpy as np
+from datapizza.embedders.fastembedder import FastEmbedder
+from datapizza.type.type import Chunk
+from datapizza.vectorstores.qdrant import QdrantVectorstore
 from dotenv import load_dotenv
 from pypdf import PdfReader
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
-from sentence_transformers import SentenceTransformer
 
 # Load environment variables
 load_dotenv()
@@ -29,52 +26,62 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(os.getenv("RAG_DATA_DIR", "dataset/ETFs"))
 CACHE_DIR = Path(os.getenv("RAG_CACHE_DIR", "dataset/ETFs/.cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-EMB_CACHE = Path(
-    os.getenv("RAG_EMBEDDINGS_CACHE", "dataset/ETFs/.cache/embeddings.pkl")
-)
 
-# Qdrant storage directory (part of datapizza-ai ecosystem)
+# Qdrant storage directory (datapizza-ai vector store)
 QDRANT_STORAGE_DIR = CACHE_DIR / "qdrant_storage"
 QDRANT_COLLECTION = "financial_assets"
 
 DEFAULT_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "800"))
 DEFAULT_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
-EMB_MODEL_NAME = os.getenv("RAG_EMBEDDING_MODEL", "all-roberta-large-v1")
+# Use sparse embedding model compatible with datapizza-ai FastEmbedder
+EMB_MODEL_NAME = os.getenv("RAG_EMBEDDING_MODEL", "prithivida/Splade_PP_en_v1")
 
-# Global embedding model cache
-_embedding_model = None
+# Global embedder and vectorstore cache
+_embedder = None
+_vectorstore = None
 
 
 class RAGAssetRetriever:
-    """RAG retriever for asset PDFs using datapizza-ai's Qdrant vector store."""
+    """RAG retriever for asset PDFs using datapizza-ai framework."""
 
     def __init__(self, data_dir: Path = DATA_DIR):
-        """Initialize RAG retriever with Qdrant vector store.
+        """Initialize RAG retriever with datapizza-ai components.
 
         Args:
             data_dir: Path to the ETF dataset directory
         """
         self.data_dir = data_dir
         self.cache_dir = CACHE_DIR
-        self.emb_cache = EMB_CACHE
         self.qdrant_path = QDRANT_STORAGE_DIR
         self._documents = None
-        self._embeddings = None
-        self._qdrant_client: Optional[QdrantClient] = None
+        self._embedder: Optional[FastEmbedder] = None
+        self._vectorstore: Optional[QdrantVectorstore] = None
+        self._retriever = None
         self._is_indexed = False
 
-    @staticmethod
-    def _load_embedder():
-        """Load and cache the embedding model globally.
+    def _get_embedder(self) -> FastEmbedder:
+        """Get or create the datapizza-ai FastEmbedder.
 
         Returns:
-            SentenceTransformer model instance
+            FastEmbedder instance
         """
-        global _embedding_model
-        if _embedding_model is None:
-            logger.info("Loading embedding model: %s", EMB_MODEL_NAME)
-            _embedding_model = SentenceTransformer(EMB_MODEL_NAME)
-        return _embedding_model
+        global _embedder
+        if _embedder is None:
+            logger.info("Loading FastEmbedder model: %s", EMB_MODEL_NAME)
+            _embedder = FastEmbedder(model_name=EMB_MODEL_NAME)
+        return _embedder
+
+    def _get_vectorstore(self) -> QdrantVectorstore:
+        """Get or create the datapizza-ai QdrantVectorstore.
+
+        Returns:
+            QdrantVectorstore instance
+        """
+        global _vectorstore
+        if _vectorstore is None:
+            logger.info("Initializing QdrantVectorstore at: %s", self.qdrant_path)
+            _vectorstore = QdrantVectorstore(location=str(self.qdrant_path))
+        return _vectorstore
 
     def _read_pdf_text(self, pdf_path: Path) -> str:
         """Extract text from PDF.
@@ -161,120 +168,83 @@ class RAGAssetRetriever:
         )
         return docs
 
-    def build_or_load_index(self) -> Tuple[List[Dict], Optional[np.ndarray]]:
-        """Build or load cached embedding index using Qdrant vector store.
+    def build_or_load_index(self) -> Tuple[List[Dict], None]:
+        """Build or load index using datapizza-ai vectorstore.
 
-        If Qdrant collection exists, loads from it. Otherwise, ingests
-        all PDFs from data_dir and generates embeddings using the
-        SentenceTransformer model, storing them in Qdrant.
+        Creates QdrantVectorstore collection and adds document chunks
+        with embeddings using datapizza-ai's FastEmbedder.
 
         Returns:
-            Tuple of (documents list, embeddings array or None)
+            Tuple of (documents list, None) - embeddings managed by vectorstore
 
         Raises:
             RuntimeError: If no PDFs found when building index
         """
-        # Initialize Qdrant client
-        if self._qdrant_client is None:
-            logger.info("Initializing Qdrant client at: %s", self.qdrant_path)
-            self._qdrant_client = QdrantClient(path=str(self.qdrant_path))
+        # Initialize vectorstore and embedder
+        if self._vectorstore is None:
+            self._vectorstore = self._get_vectorstore()
+        if self._embedder is None:
+            self._embedder = self._get_embedder()
 
-        # Check if collection exists with documents
+        # Check if collection already exists with data
         try:
-            collections = self._qdrant_client.get_collections().collections
-            collection_exists = any(c.name == QDRANT_COLLECTION for c in collections)
-            if collection_exists:
-                # Check if collection has points
-                count = self._qdrant_client.count(
+            collections = self._vectorstore.get_collections()
+            collection_names = [c.name for c in collections.collections]
+            
+            if QDRANT_COLLECTION in collection_names:
+                count = self._vectorstore.get_client().count(
                     collection_name=QDRANT_COLLECTION
                 )
                 if count.count > 0:
                     logger.info(
-                        "Loaded existing Qdrant index with %d documents",
+                        "Loaded existing collection '%s' with %d documents",
+                        QDRANT_COLLECTION,
                         count.count
                     )
                     self._is_indexed = True
-                    # Load documents metadata if pickle cache exists
-                    if self.emb_cache.exists():
-                        logger.debug("Loading document metadata from pickle cache")
-                        with open(self.emb_cache, "rb") as f:
-                            payload = pickle.load(f)
-                        self._documents = payload.get("docs", [])
-                    return self._documents or [], None
+                    # Load documents list if needed
+                    self._documents = []
+                    return self._documents, None
         except Exception as e:
-            logger.debug("No existing Qdrant index found: %s", e)
+            logger.debug("No existing collection found: %s", e)
 
         # Build new index
-        logger.info("Building new embedding index from PDFs")
+        logger.info("Building new index with datapizza-ai")
         docs = self.ingest_pdfs()
         if not docs:
             raise RuntimeError(f"No PDFs found in {self.data_dir}")
 
         self._documents = docs
 
-        # Generate embeddings
-        embedder = self._load_embedder()
-        logger.info("Generating embeddings for %d document chunks", len(docs))
-        texts = [d["text"] for d in docs]
-        embs = embedder.encode(
-            texts, batch_size=64, show_progress_bar=True, convert_to_numpy=True
-        )
-        self._embeddings = embs
-
-        # Get embedding dimension
-        embedding_dim = embs.shape[1]
-        logger.info("Embedding dimension: %d", embedding_dim)
-
-        # Create Qdrant collection
-        logger.info("Creating Qdrant collection: %s", QDRANT_COLLECTION)
-        self._qdrant_client.create_collection(
-            collection_name=QDRANT_COLLECTION,
-            vectors_config=VectorParams(
-                size=embedding_dim,
-                distance=Distance.COSINE
+        # Create Chunk objects for datapizza-ai
+        logger.info("Creating %d chunks for vectorstore", len(docs))
+        chunks = []
+        for doc in docs:
+            # Embed the text using datapizza-ai FastEmbedder
+            embedding = self._embedder.embed(doc["text"])
+            
+            # Create Chunk with embedding
+            chunk = Chunk(
+                id=doc["id"],
+                text=doc["text"],
+                embeddings=embedding,
+                metadata={"source": doc["source"]}
             )
-        )
+            chunks.append(chunk)
 
-        # Upload points to Qdrant
-        logger.info("Uploading %d points to Qdrant", len(docs))
-        points = []
-        for idx, (doc, emb) in enumerate(zip(docs, embs)):
-            points.append(
-                PointStruct(
-                    id=idx,
-                    vector=emb.tolist(),
-                    payload={
-                        "doc_id": doc["id"],
-                        "source": doc["source"],
-                        "text": doc["text"]
-                    }
-                )
-            )
+        # Add chunks to vectorstore (this will create the collection)
+        logger.info("Adding chunks to QdrantVectorstore collection '%s'", QDRANT_COLLECTION)
+        self._vectorstore.add(chunks, collection_name=QDRANT_COLLECTION)
 
-        # Upload in batches
-        batch_size = 100
-        for i in range(0, len(points), batch_size):
-            batch = points[i:i + batch_size]
-            self._qdrant_client.upsert(
-                collection_name=QDRANT_COLLECTION,
-                points=batch
-            )
-            logger.debug("Uploaded batch %d/%d", i // batch_size + 1, math.ceil(len(points) / batch_size))
-
-        # Cache embeddings and documents for backward compatibility
-        logger.info("Caching embeddings to: %s", self.emb_cache)
-        with open(self.emb_cache, "wb") as f:
-            pickle.dump({"docs": docs, "embeddings": embs}, f)
-
-        logger.info("Index built and cached successfully in Qdrant")
+        logger.info("Index built successfully using datapizza-ai")
         self._is_indexed = True
-        return docs, embs
+        return docs, None
 
     def retrieve(self, query: str, k: int = 15) -> List[Dict]:
-        """Retrieve k most similar documents via semantic search using Qdrant.
+        """Retrieve k most similar documents using datapizza-ai vectorstore.
 
-        Encodes the query and finds the k documents with highest
-        cosine similarity using Qdrant vector search.
+        Uses datapizza-ai's FastEmbedder to encode the query and
+        QdrantVectorstore to find similar documents.
 
         Args:
             query: Search query text
@@ -283,35 +253,49 @@ class RAGAssetRetriever:
         Returns:
             List of k most similar documents with scores
         """
-        if self._qdrant_client is None or not self._is_indexed:
+        if not self._is_indexed:
             logger.debug("Index not loaded, building or loading now")
             self.build_or_load_index()
 
-        embedder = self._load_embedder()
-        logger.debug("Encoding query: %s", query[:100])
-        query_vector = embedder.encode([query], convert_to_numpy=True)[0]
+        if self._vectorstore is None:
+            self._vectorstore = self._get_vectorstore()
+        if self._embedder is None:
+            self._embedder = self._get_embedder()
 
-        logger.debug("Performing Qdrant search for top %d documents", k)
-        # Search in Qdrant
-        search_results = self._qdrant_client.search(
+        logger.debug("Encoding query with datapizza-ai: %s", query[:100])
+        
+        # Embed query using datapizza-ai FastEmbedder
+        query_embedding = self._embedder.embed(query)
+
+        logger.debug("Searching in QdrantVectorstore for top %d documents", k)
+        
+        # Search using datapizza-ai vectorstore
+        # Extract the embedding vector (FastEmbedder returns list of embeddings)
+        if isinstance(query_embedding, list) and len(query_embedding) > 0:
+            query_vector = query_embedding[0]
+        else:
+            query_vector = query_embedding
+
+        # Perform search
+        search_results = self._vectorstore.search(
             collection_name=QDRANT_COLLECTION,
-            query_vector=query_vector.tolist(),
-            limit=k
+            query_vector=query_vector,
+            k=k
         )
 
-        logger.info("Retrieved %d documents from Qdrant", len(search_results))
+        logger.info("Retrieved %d documents from datapizza-ai vectorstore", len(search_results))
 
-        # Format results to match expected output format
+        # Convert Chunk objects to dict format for compatibility
         results = []
-        for result in search_results:
+        for chunk in search_results:
             results.append({
-                "id": result.payload["doc_id"],
-                "source": result.payload["source"],
-                "text": result.payload["text"],
-                "score": float(result.score)
+                "id": chunk.id,
+                "source": chunk.metadata.get("source", "unknown"),
+                "text": chunk.text,
+                "score": 1.0  # Qdrant returns chunks without explicit scores in this mode
             })
 
         if results:
-            logger.info("Top score: %.4f", results[0]["score"])
+            logger.info("Retrieved %d results", len(results))
 
         return results
