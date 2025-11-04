@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
@@ -287,6 +287,21 @@ class PortfolioPDFExporter:
 
         return content
 
+    def _get_asset_field(self, asset, field: str):
+        """
+        Helper method to safely extract asset field from dict or object.
+        
+        Args:
+            asset: Asset object or dictionary
+            field: Field name to extract
+            
+        Returns:
+            Field value or None
+        """
+        if isinstance(asset, dict):
+            return asset.get(field)
+        return getattr(asset, field, None)
+
     def _create_portfolio_section(self, portfolio: Dict) -> list:
         """Create portfolio recommendation section."""
         content = []
@@ -329,17 +344,9 @@ class PortfolioPDFExporter:
             asset_data = [["Asset", "Allocation %", "Justification"]]
 
             for asset in portfolio["assets"]:
-                symbol = asset.get("symbol") if isinstance(asset, dict) else asset.symbol
-                percentage = (
-                    asset.get("percentage")
-                    if isinstance(asset, dict)
-                    else asset.percentage
-                )
-                justification = (
-                    asset.get("justification")
-                    if isinstance(asset, dict)
-                    else asset.justification
-                )
+                symbol = self._get_asset_field(asset, "symbol")
+                percentage = self._get_asset_field(asset, "percentage")
+                justification = self._get_asset_field(asset, "justification")
 
                 # Truncate justification if too long
                 if justification and len(justification) > 120:

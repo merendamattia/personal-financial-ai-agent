@@ -1514,14 +1514,12 @@ def _display_pdf_export_section(
             # Initialize PDF exporter
             pdf_exporter = PortfolioPDFExporter()
 
-            # Convert FinancialProfile to dict if needed
+            # Convert FinancialProfile to dict for PDF generation
+            # Profile should be a FinancialProfile instance from session_state
             profile_dict = None
             if financial_profile:
-                profile_dict = (
-                    financial_profile.model_dump()
-                    if hasattr(financial_profile, "model_dump")
-                    else financial_profile
-                )
+                # Convert Pydantic model to dict
+                profile_dict = financial_profile.model_dump()
 
             # Generate PDF
             pdf_bytes = pdf_exporter.generate_pdf(
