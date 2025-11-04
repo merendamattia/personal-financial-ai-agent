@@ -6,6 +6,7 @@ Qdrant vector store for efficient semantic search.
 """
 
 import logging
+import math
 import os
 import pickle
 from pathlib import Path
@@ -182,7 +183,6 @@ class RAGAssetRetriever:
         try:
             collections = self._qdrant_client.get_collections().collections
             collection_exists = any(c.name == QDRANT_COLLECTION for c in collections)
-            
             if collection_exists:
                 # Check if collection has points
                 count = self._qdrant_client.count(
@@ -259,7 +259,7 @@ class RAGAssetRetriever:
                 collection_name=QDRANT_COLLECTION,
                 points=batch
             )
-            logger.debug("Uploaded batch %d/%d", i // batch_size + 1, (len(points) + batch_size - 1) // batch_size)
+            logger.debug("Uploaded batch %d/%d", i // batch_size + 1, math.ceil(len(points) / batch_size))
 
         # Cache embeddings and documents for backward compatibility
         logger.info("Caching embeddings to: %s", self.emb_cache)
@@ -292,7 +292,6 @@ class RAGAssetRetriever:
         query_vector = embedder.encode([query], convert_to_numpy=True)[0]
 
         logger.debug("Performing Qdrant search for top %d documents", k)
-        
         # Search in Qdrant
         search_results = self._qdrant_client.search(
             collection_name=QDRANT_COLLECTION,
