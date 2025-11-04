@@ -33,6 +33,11 @@ MONTECARLO_DEFAULT_INITIAL_INVESTMENT = int(
     os.getenv("MONTECARLO_DEFAULT_INITIAL_INVESTMENT", 1000)
 )
 
+# Scroll behavior configuration
+# Delay in milliseconds to ensure Streamlit has finished rendering all content
+# before scrolling to the portfolio section
+SCROLL_TO_PORTFOLIO_DELAY_MS = 100
+
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -1735,28 +1740,32 @@ def main():
                 )
 
                 # Scroll to portfolio section if just generated
+                # Note: JavaScript injection is necessary because Streamlit does not provide
+                # a built-in API for scrolling to a specific element. This is safe because
+                # we control the content and don't use any user input in the script.
                 if st.session_state.scroll_to_portfolio:
                     st.markdown(
-                        """
+                        f"""
                         <script>
-                        (function() {
-                            // Wait for DOM to be ready
-                            if (document.readyState === 'loading') {
+                        (function() {{
+                            // Wait for DOM to be ready before attempting to scroll
+                            if (document.readyState === 'loading') {{
                                 document.addEventListener('DOMContentLoaded', scrollToPortfolio);
-                            } else {
+                            }} else {{
                                 scrollToPortfolio();
-                            }
+                            }}
                             
-                            function scrollToPortfolio() {
-                                // Small delay to ensure all content is rendered
-                                setTimeout(function() {
+                            function scrollToPortfolio() {{
+                                // Delay to ensure all Streamlit content has finished rendering
+                                // This prevents scrolling before charts and other elements are loaded
+                                setTimeout(function() {{
                                     var portfolioSection = document.getElementById('portfolio-section');
-                                    if (portfolioSection) {
-                                        portfolioSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }
-                                }, 100);
-                            }
-                        })();
+                                    if (portfolioSection) {{
+                                        portfolioSection.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+                                    }}
+                                }}, {SCROLL_TO_PORTFOLIO_DELAY_MS});
+                            }}
+                        }})();
                         </script>
                         """,
                         unsafe_allow_html=True,
