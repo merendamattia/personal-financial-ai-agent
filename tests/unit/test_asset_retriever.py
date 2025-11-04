@@ -122,17 +122,32 @@ class TestRAGAssetRetrieverEmbedding:
 
 
 class TestRAGAssetRetrieverRetrieval:
-    """Tests for document retrieval functionality."""
+    """Tests for document retrieval functionality with Qdrant."""
 
-    def test_retrieve_with_mock_embeddings(self, sample_rag_documents):
-        """Test retrieval with mocked embeddings."""
+    def test_retrieve_with_mock_qdrant(self, sample_rag_documents):
+        """Test retrieval with mocked Qdrant client."""
         retriever = RAGAssetRetriever()
 
-        # Mock the internal state
-        retriever._documents = sample_rag_documents
+        # Mark as indexed to skip build_or_load_index
+        retriever._is_indexed = True
 
-        # Create mock embeddings (3 documents, 384-dim)
-        retriever._embeddings = np.random.randn(3, 384)
+        # Mock Qdrant client
+        mock_qdrant = MagicMock()
+        retriever._qdrant_client = mock_qdrant
+
+        # Create mock search results
+        mock_results = []
+        for i, doc in enumerate(sample_rag_documents[:2]):  # Return top 2
+            mock_result = MagicMock()
+            mock_result.payload = {
+                "doc_id": doc["id"],
+                "source": doc["source"],
+                "text": doc["text"]
+            }
+            mock_result.score = doc["score"]
+            mock_results.append(mock_result)
+
+        mock_qdrant.search.return_value = mock_results
 
         # Patch the embedder
         with patch.object(retriever, "_load_embedder") as mock_embedder:
@@ -145,13 +160,33 @@ class TestRAGAssetRetrieverRetrieval:
             assert len(results) == 2
             assert all("id" in doc for doc in results)
             assert all("score" in doc for doc in results)
+            # Verify Qdrant search was called
+            mock_qdrant.search.assert_called_once()
 
     def test_retrieve_k_limit(self, sample_rag_documents):
         """Test that retrieval respects k limit."""
         retriever = RAGAssetRetriever()
-        retriever._documents = sample_rag_documents
+        retriever._is_indexed = True
 
-        retriever._embeddings = np.random.randn(3, 384)
+        # Mock Qdrant client
+        mock_qdrant = MagicMock()
+        retriever._qdrant_client = mock_qdrant
+
+        def mock_search(collection_name, query_vector, limit):
+            """Mock search that respects k limit."""
+            mock_results = []
+            for i, doc in enumerate(sample_rag_documents[:limit]):
+                mock_result = MagicMock()
+                mock_result.payload = {
+                    "doc_id": doc["id"],
+                    "source": doc["source"],
+                    "text": doc["text"]
+                }
+                mock_result.score = doc["score"]
+                mock_results.append(mock_result)
+            return mock_results
+
+        mock_qdrant.search.side_effect = mock_search
 
         with patch.object(retriever, "_load_embedder") as mock_embedder:
             mock_encoder = MagicMock()
@@ -186,25 +221,40 @@ class TestRAGAssetRetrieverDocumentProcessing:
 
 
 class TestRAGAssetRetrieverIntegration:
-    """Integration tests for RAG retriever."""
+    """Integration tests for RAG retriever with Qdrant."""
 
-    def test_retrieve_with_mocked_index(self):
-        """Test retrieve function with mocked index."""
+    def test_retrieve_with_mocked_qdrant(self):
+        """Test retrieve function with mocked Qdrant client."""
         retriever = RAGAssetRetriever()
 
-        # Mock documents and embeddings
+        # Mock documents
         mock_docs = [
             {"id": "1", "text": "ETF bond allocation", "source": "bond.pdf"},
             {"id": "2", "text": "Stock market diversification", "source": "stock.pdf"},
             {"id": "3", "text": "Treasury bonds and yields", "source": "treasury.pdf"},
         ]
-        mock_embeddings = np.array(
-            [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.15, 0.25, 0.35]]
-        )
 
-        # Set mocked data
-        retriever._documents = mock_docs
-        retriever._embeddings = mock_embeddings
+        # Mark as indexed and set up Qdrant mock
+        retriever._is_indexed = True
+        mock_qdrant = MagicMock()
+        retriever._qdrant_client = mock_qdrant
+
+        # Mock search results - return docs sorted by relevance
+        def mock_search(collection_name, query_vector, limit):
+            results = []
+            for i, doc in enumerate(mock_docs[:limit]):
+                mock_result = MagicMock()
+                mock_result.payload = {
+                    "doc_id": doc["id"],
+                    "source": doc["source"],
+                    "text": doc["text"]
+                }
+                # Higher score for first doc (most similar to "bonds" query)
+                mock_result.score = 0.9 - (i * 0.1)
+                results.append(mock_result)
+            return results
+
+        mock_qdrant.search.side_effect = mock_search
 
         with patch.object(retriever, "_load_embedder") as mock_embedder:
             mock_model = MagicMock()
@@ -218,3 +268,5 @@ class TestRAGAssetRetrieverIntegration:
             assert len(results) == 2
             assert all("score" in d for d in results)
             assert all("text" in d for d in results)
+            # Verify Qdrant was used
+            mock_qdrant.search.assert_called()
