@@ -1,20 +1,22 @@
 """RAG Asset Retriever Module.
 
 This module provides the RAGAssetRetriever class for semantic search
-over ETF/asset PDFs in the dataset directory.
+over ETF/asset PDFs in the dataset directory using datapizza-ai's
+Qdrant vector store for efficient semantic search.
 """
 
 import logging
 import os
 import pickle
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from dotenv import load_dotenv
 from pypdf import PdfReader
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 # Load environment variables
 load_dotenv()
@@ -30,6 +32,10 @@ EMB_CACHE = Path(
     os.getenv("RAG_EMBEDDINGS_CACHE", "dataset/ETFs/.cache/embeddings.pkl")
 )
 
+# Qdrant storage directory (part of datapizza-ai ecosystem)
+QDRANT_STORAGE_DIR = CACHE_DIR / "qdrant_storage"
+QDRANT_COLLECTION = "financial_assets"
+
 DEFAULT_CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "800"))
 DEFAULT_CHUNK_OVERLAP = int(os.getenv("RAG_CHUNK_OVERLAP", "120"))
 EMB_MODEL_NAME = os.getenv("RAG_EMBEDDING_MODEL", "all-roberta-large-v1")
@@ -39,10 +45,10 @@ _embedding_model = None
 
 
 class RAGAssetRetriever:
-    """Simple RAG retriever for asset PDFs using semantic search."""
+    """RAG retriever for asset PDFs using datapizza-ai's Qdrant vector store."""
 
     def __init__(self, data_dir: Path = DATA_DIR):
-        """Initialize RAG retriever.
+        """Initialize RAG retriever with Qdrant vector store.
 
         Args:
             data_dir: Path to the ETF dataset directory
@@ -50,8 +56,11 @@ class RAGAssetRetriever:
         self.data_dir = data_dir
         self.cache_dir = CACHE_DIR
         self.emb_cache = EMB_CACHE
+        self.qdrant_path = QDRANT_STORAGE_DIR
         self._documents = None
         self._embeddings = None
+        self._qdrant_client: Optional[QdrantClient] = None
+        self._is_indexed = False
 
     @staticmethod
     def _load_embedder():
@@ -151,54 +160,121 @@ class RAGAssetRetriever:
         )
         return docs
 
-    def build_or_load_index(self) -> Tuple[List[Dict], np.ndarray]:
-        """Build or load cached embedding index.
+    def build_or_load_index(self) -> Tuple[List[Dict], Optional[np.ndarray]]:
+        """Build or load cached embedding index using Qdrant vector store.
 
-        If embeddings cache exists, loads from disk. Otherwise, ingests
+        If Qdrant collection exists, loads from it. Otherwise, ingests
         all PDFs from data_dir and generates embeddings using the
-        SentenceTransformer model.
+        SentenceTransformer model, storing them in Qdrant.
 
         Returns:
-            Tuple of (documents list, embeddings array)
+            Tuple of (documents list, embeddings array or None)
 
         Raises:
             RuntimeError: If no PDFs found when building index
         """
-        if self.emb_cache.exists():
-            logger.info("Loading cached embeddings from: %s", self.emb_cache)
-            with open(self.emb_cache, "rb") as f:
-                payload = pickle.load(f)
-            self._documents = payload["docs"]
-            self._embeddings = payload["embeddings"]
-            logger.info("Loaded %d documents from cache", len(self._documents))
-            return self._documents, self._embeddings
+        # Initialize Qdrant client
+        if self._qdrant_client is None:
+            logger.info("Initializing Qdrant client at: %s", self.qdrant_path)
+            self._qdrant_client = QdrantClient(path=str(self.qdrant_path))
 
-        logger.info("Building embedding index from PDFs")
+        # Check if collection exists with documents
+        try:
+            collections = self._qdrant_client.get_collections().collections
+            collection_exists = any(c.name == QDRANT_COLLECTION for c in collections)
+            
+            if collection_exists:
+                # Check if collection has points
+                count = self._qdrant_client.count(
+                    collection_name=QDRANT_COLLECTION
+                )
+                if count.count > 0:
+                    logger.info(
+                        "Loaded existing Qdrant index with %d documents",
+                        count.count
+                    )
+                    self._is_indexed = True
+                    # Load documents metadata if pickle cache exists
+                    if self.emb_cache.exists():
+                        logger.debug("Loading document metadata from pickle cache")
+                        with open(self.emb_cache, "rb") as f:
+                            payload = pickle.load(f)
+                        self._documents = payload.get("docs", [])
+                    return self._documents or [], None
+        except Exception as e:
+            logger.debug("No existing Qdrant index found: %s", e)
+
+        # Build new index
+        logger.info("Building new embedding index from PDFs")
         docs = self.ingest_pdfs()
         if not docs:
             raise RuntimeError(f"No PDFs found in {self.data_dir}")
 
+        self._documents = docs
+
+        # Generate embeddings
         embedder = self._load_embedder()
         logger.info("Generating embeddings for %d document chunks", len(docs))
         texts = [d["text"] for d in docs]
         embs = embedder.encode(
             texts, batch_size=64, show_progress_bar=True, convert_to_numpy=True
         )
+        self._embeddings = embs
 
+        # Get embedding dimension
+        embedding_dim = embs.shape[1]
+        logger.info("Embedding dimension: %d", embedding_dim)
+
+        # Create Qdrant collection
+        logger.info("Creating Qdrant collection: %s", QDRANT_COLLECTION)
+        self._qdrant_client.create_collection(
+            collection_name=QDRANT_COLLECTION,
+            vectors_config=VectorParams(
+                size=embedding_dim,
+                distance=Distance.COSINE
+            )
+        )
+
+        # Upload points to Qdrant
+        logger.info("Uploading %d points to Qdrant", len(docs))
+        points = []
+        for idx, (doc, emb) in enumerate(zip(docs, embs)):
+            points.append(
+                PointStruct(
+                    id=idx,
+                    vector=emb.tolist(),
+                    payload={
+                        "doc_id": doc["id"],
+                        "source": doc["source"],
+                        "text": doc["text"]
+                    }
+                )
+            )
+
+        # Upload in batches
+        batch_size = 100
+        for i in range(0, len(points), batch_size):
+            batch = points[i:i + batch_size]
+            self._qdrant_client.upsert(
+                collection_name=QDRANT_COLLECTION,
+                points=batch
+            )
+            logger.debug("Uploaded batch %d/%d", i // batch_size + 1, (len(points) + batch_size - 1) // batch_size)
+
+        # Cache embeddings and documents for backward compatibility
         logger.info("Caching embeddings to: %s", self.emb_cache)
         with open(self.emb_cache, "wb") as f:
             pickle.dump({"docs": docs, "embeddings": embs}, f)
 
-        self._documents = docs
-        self._embeddings = embs
-        logger.info("Index built and cached successfully")
+        logger.info("Index built and cached successfully in Qdrant")
+        self._is_indexed = True
         return docs, embs
 
     def retrieve(self, query: str, k: int = 15) -> List[Dict]:
-        """Retrieve k most similar documents via semantic search.
+        """Retrieve k most similar documents via semantic search using Qdrant.
 
         Encodes the query and finds the k documents with highest
-        cosine similarity to the query embedding.
+        cosine similarity using Qdrant vector search.
 
         Args:
             query: Search query text
@@ -207,29 +283,36 @@ class RAGAssetRetriever:
         Returns:
             List of k most similar documents with scores
         """
-        if self._documents is None or self._embeddings is None:
+        if self._qdrant_client is None or not self._is_indexed:
             logger.debug("Index not loaded, building or loading now")
             self.build_or_load_index()
 
         embedder = self._load_embedder()
         logger.debug("Encoding query: %s", query[:100])
-        q = embedder.encode([query], convert_to_numpy=True)
+        query_vector = embedder.encode([query], convert_to_numpy=True)[0]
 
-        logger.debug(
-            "Computing similarity scores against %d documents", len(self._documents)
+        logger.debug("Performing Qdrant search for top %d documents", k)
+        
+        # Search in Qdrant
+        search_results = self._qdrant_client.search(
+            collection_name=QDRANT_COLLECTION,
+            query_vector=query_vector.tolist(),
+            limit=k
         )
-        sims = cosine_similarity(q, self._embeddings)[0]
-        idxs = np.argsort(-sims)[:k]
 
+        logger.info("Retrieved %d documents from Qdrant", len(search_results))
+
+        # Format results to match expected output format
         results = []
-        for idx in idxs:
-            d = self._documents[idx].copy()
-            d["score"] = float(sims[idx])
-            results.append(d)
+        for result in search_results:
+            results.append({
+                "id": result.payload["doc_id"],
+                "source": result.payload["source"],
+                "text": result.payload["text"],
+                "score": float(result.score)
+            })
 
-        logger.info(
-            "Retrieved %d documents, top score: %.4f",
-            len(results),
-            results[0]["score"] if results else 0,
-        )
+        if results:
+            logger.info("Top score: %.4f", results[0]["score"])
+
         return results
