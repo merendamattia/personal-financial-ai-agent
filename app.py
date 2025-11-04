@@ -100,15 +100,70 @@ def is_ollama_available() -> bool:
     return False
 
 
+def _check_api_key_validity(provider: str) -> bool:
+    """
+    Check if API key for a provider is valid and configured using actual connection tests.
+
+    Args:
+        provider: The provider name (openai, google, ollama)
+
+    Returns:
+        True if API key is valid, False otherwise
+    """
+    logger.debug("Checking API key validity for provider: %s", provider)
+
+    try:
+        from src.ui.settings_page import (
+            _test_google_connection,
+            _test_ollama_connection,
+            _test_openai_connection,
+        )
+
+        if provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("OpenAI API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            success, _ = _test_openai_connection(api_key, model)
+            logger.debug("OpenAI API key validity: %s", success)
+            return success
+
+        elif provider == "google":
+            api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("Google API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash-exp")
+            success, _ = _test_google_connection(api_key, model)
+            logger.debug("Google API key validity: %s", success)
+            return success
+
+        elif provider == "ollama":
+            # Ollama doesn't need API key, just needs to be running
+            logger.debug("Ollama provider doesn't require API key validation")
+            return is_ollama_available()
+
+        else:
+            logger.warning("Unknown provider: %s", provider)
+            return False
+
+    except Exception as e:
+        logger.error("Error checking API key validity for %s: %s", provider, str(e))
+        return False
+
+
 def get_available_providers() -> list:
     """
-    Get list of available providers.
-    Ollama is only available if it's running.
+    Get list of available providers with valid API keys.
+    Only returns providers that have valid credentials configured.
 
     Returns:
         List of available provider names
     """
-    logger.debug("Getting available providers")
+    logger.debug("Getting available providers with valid API keys")
 
     all_providers = list_providers()
     logger.debug("All registered providers: %s", all_providers)
@@ -123,9 +178,14 @@ def get_available_providers() -> list:
             else:
                 logger.debug("Ollama is not available")
         else:
-            # Google and OpenAI are always available (if API keys are set, they'll work)
-            available.append(provider)
-            logger.debug("Provider %s is available", provider)
+            # Check if API key is valid for Google and OpenAI
+            if _check_api_key_validity(provider):
+                available.append(provider)
+                logger.debug("Provider %s is available with valid API key", provider)
+            else:
+                logger.debug(
+                    "Provider %s is not available (no valid API key)", provider
+                )
 
     logger.info("Available providers: %s", available)
     return available
@@ -483,6 +543,10 @@ def _initialize_session_state():
             False,
             "Initialized show_settings session state to False",
         ),
+        "skip_initial_settings": (
+            False,
+            "Initialized skip_initial_settings session state to False",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -551,6 +615,11 @@ def _show_provider_selection():
                 disabled=True,
                 use_container_width=True,
             )
+
+    if st.button("🔑 Configure API Keys", use_container_width=True):
+        logger.info("Opening API configuration from provider selection")
+        st.session_state.show_settings = True
+        st.rerun()
 
     st.divider()
     st.info(
@@ -699,7 +768,7 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.agent_is_healthy = False
             st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
-        
+
         # API Configuration button
         if st.button("🔑 API Configuration", use_container_width=True):
             logger.info("Opening API configuration settings")
@@ -1585,8 +1654,36 @@ def main():
 
     # Initialize session state
     _initialize_session_state()
-    
-    # Show settings page if requested
+
+    # Check if any providers are available
+    available_providers = get_available_providers()
+    logger.debug("Available providers on startup: %s", available_providers)
+
+    # Show API key configuration on first load only if NO providers are available
+    if not st.session_state.skip_initial_settings and not available_providers:
+        logger.debug(
+            "First load with no available providers - showing API key configuration page"
+        )
+        _show_header()
+        st.subheader("🔑 Configure Your API Keys")
+        st.markdown(
+            "Welcome! No LLM providers are currently configured. Let's set up your API keys and LLM provider settings before we get started."
+        )
+        show_settings_page()
+
+        # Add button to proceed to provider selection
+        if st.button("✅ Continue to Provider Selection", use_container_width=True):
+            logger.info("User proceeding to provider selection after configuration")
+            st.session_state.skip_initial_settings = True
+            st.rerun()
+        return
+
+    # Mark initial settings as skipped if we reach here (at least one provider is available)
+    if not st.session_state.skip_initial_settings and available_providers:
+        logger.debug("Skipping initial settings - at least one provider is available")
+        st.session_state.skip_initial_settings = True
+
+    # Show settings page if requested from sidebar
     if st.session_state.get("show_settings", False):
         show_settings_page()
         return
