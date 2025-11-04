@@ -3,6 +3,15 @@
 This module provides a user-friendly interface for configuring API keys
 and provider settings directly from the Streamlit UI without manually
 editing the .env file.
+
+Implementation Notes:
+- Provider-specific imports (openai, google.generativeai, requests) are done
+  inside functions to avoid requiring all dependencies at module import time.
+  This is intentional: users may not have all provider SDKs installed.
+- Credentials are stored in Streamlit session state (in-memory only) and
+  propagated to environment variables for consistency with the app's existing
+  architecture where clients.py factories read from os.environ.
+- Connection tests provide immediate feedback before saving credentials.
 """
 
 import logging
@@ -33,12 +42,13 @@ def _test_openai_connection(api_key: str, model: str) -> tuple[bool, str]:
         return True, f"✅ Successfully connected! Model: {response.id}"
     except Exception as e:
         error_msg = str(e)
-        if "401" in error_msg or "Incorrect API key" in error_msg:
+        # Sanitize error messages to avoid exposing sensitive information
+        if "401" in error_msg or "Incorrect API key" in error_msg or "authentication" in error_msg.lower():
             return False, "❌ Invalid API key"
         elif "404" in error_msg or "does not exist" in error_msg:
             return False, f"❌ Model '{model}' not found"
         else:
-            return False, f"❌ Connection failed: {error_msg[:100]}"
+            return False, "❌ Connection failed. Please check your settings."
 
 
 def _test_google_connection(api_key: str, model: str) -> tuple[bool, str]:
@@ -60,12 +70,13 @@ def _test_google_connection(api_key: str, model: str) -> tuple[bool, str]:
         return True, f"✅ Successfully connected! Model: {model_info.name}"
     except Exception as e:
         error_msg = str(e)
-        if "API_KEY_INVALID" in error_msg or "invalid" in error_msg.lower():
+        # Sanitize error messages to avoid exposing sensitive information
+        if "API_KEY_INVALID" in error_msg or "invalid" in error_msg.lower() or "authentication" in error_msg.lower():
             return False, "❌ Invalid API key"
         elif "404" in error_msg or "not found" in error_msg.lower():
             return False, f"❌ Model '{model}' not found"
         else:
-            return False, f"❌ Connection failed: {error_msg[:100]}"
+            return False, "❌ Connection failed. Please check your settings."
 
 
 def _test_ollama_connection(base_url: str, model: str) -> tuple[bool, str]:
@@ -85,7 +96,10 @@ def _test_ollama_connection(base_url: str, model: str) -> tuple[bool, str]:
         health_url = base_url.replace("/v1", "")
         
         # Test if Ollama is running
-        response = requests.get(health_url, timeout=5)
+        # Note: For localhost/local docker, SSL verification is not typically needed
+        # For production environments with HTTPS, verify=True should be used
+        verify_ssl = not health_url.startswith("http://localhost") and not health_url.startswith("http://127.0.0.1")
+        response = requests.get(health_url, timeout=5, verify=verify_ssl)
         if "Ollama is running" not in response.text:
             return False, "❌ Ollama is not running at this URL"
         
@@ -93,11 +107,11 @@ def _test_ollama_connection(base_url: str, model: str) -> tuple[bool, str]:
         # Note: This is a basic check; Ollama may not have all models pre-downloaded
         return True, f"✅ Successfully connected to Ollama! Model: {model}"
     except requests.exceptions.ConnectionError:
-        return False, f"❌ Cannot connect to {base_url}. Is Ollama running?"
+        return False, "❌ Cannot connect to Ollama. Is it running?"
     except requests.exceptions.Timeout:
-        return False, f"❌ Connection timeout to {base_url}"
-    except Exception as e:
-        return False, f"❌ Connection failed: {str(e)[:100]}"
+        return False, "❌ Connection timeout"
+    except Exception:
+        return False, "❌ Connection failed. Please check the URL."
 
 
 def _initialize_settings_state():
@@ -119,10 +133,19 @@ def _initialize_settings_state():
 
 
 def _apply_settings():
-    """Apply the current settings to environment variables and update clients."""
+    """Apply the current settings to environment variables and update clients.
+    
+    Note: This function updates environment variables to maintain consistency with
+    the existing application architecture. The client factory functions in
+    src/clients.py read credentials from environment variables. While this approach
+    exposes credentials to child processes, it's consistent with the app's design
+    where credentials are already loaded from .env at startup. For enhanced security
+    in production, consider refactoring to pass credentials directly to client
+    constructors instead of via environment variables.
+    """
     config = st.session_state.settings_config
     
-    # Update environment variables
+    # Update environment variables (maintaining consistency with existing architecture)
     if config.get("openai_api_key"):
         os.environ["OPENAI_API_KEY"] = config["openai_api_key"]
     if config.get("openai_model"):
