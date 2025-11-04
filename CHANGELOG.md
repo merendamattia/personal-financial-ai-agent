@@ -1,3 +1,10 @@
+## [1.3.3](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.2...v1.3.3) (2025-11-04)
+
+
+### Bug Fixes
+
+* add file deletion detection and explicit analyze button ([ed1ceed](https://github.com/merendamattia/personal-financial-ai-agent/commit/ed1ceed3e8c11704a0390d391a565d4a0daa8423))
+
 ## [1.3.2](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.1...v1.3.2) (2025-11-03)
 
 
