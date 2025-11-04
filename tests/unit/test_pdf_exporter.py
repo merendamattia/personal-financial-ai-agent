@@ -5,9 +5,7 @@ Tests the PortfolioPDFExporter for generating PDF documents.
 """
 
 import io
-from datetime import datetime
 
-import pytest
 from pypdf import PdfReader
 
 from src.export import PortfolioPDFExporter

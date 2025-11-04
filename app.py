@@ -479,6 +479,14 @@ def _initialize_session_state():
             None,
             "Initialized cached_returns_data session state to None",
         ),
+        "monte_carlo_lump_data": (
+            None,
+            "Initialized monte_carlo_lump_data session state to None",
+        ),
+        "monte_carlo_pac_data": (
+            None,
+            "Initialized monte_carlo_pac_data session state to None",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -1225,6 +1233,15 @@ def _display_wealth_simulation(
 
                 st.plotly_chart(fig_lump, use_container_width=True)
 
+                # Store Monte Carlo lump sum data for PDF export
+                st.session_state.monte_carlo_lump_data = {
+                    'x': time_array.tolist(),
+                    'percentile_10': percentile_10.tolist(),
+                    'percentile_50': percentile_50.tolist(),
+                    'percentile_75': percentile_75.tolist(),
+                    'title': 'Lump Sum Investment - 20-Year Projection'
+                }
+
                 # Display lump sum starting data
                 st.markdown("#### Starting Data")
                 col1, col2, col3, col4 = st.columns(4)
@@ -1394,6 +1411,16 @@ def _display_wealth_simulation(
 
                 st.plotly_chart(fig_pac, use_container_width=True)
 
+                # Store Monte Carlo PAC data for PDF export
+                st.session_state.monte_carlo_pac_data = {
+                    'x': time_array.tolist(),
+                    'percentile_10': pac_percentile_10.tolist(),
+                    'percentile_50': pac_percentile_50.tolist(),
+                    'percentile_75': pac_percentile_75.tolist(),
+                    'cumulative_invested': cumulative_invested.tolist(),
+                    'title': f'PAC Investment - Monthly: €{monthly_contribution:,.0f}'
+                }
+
                 # Display PAC starting data
                 st.markdown("#### Starting Data")
                 col1, col2, col3, col4, col5 = st.columns(5)
@@ -1521,12 +1548,19 @@ def _display_pdf_export_section(
                 # Convert Pydantic model to dict
                 profile_dict = financial_profile.model_dump()
 
+            # Get Monte Carlo data from session state if available
+            monte_carlo_lump_data = st.session_state.get('monte_carlo_lump_data', None)
+            monte_carlo_pac_data = st.session_state.get('monte_carlo_pac_data', None)
+
             # Generate PDF
             pdf_bytes = pdf_exporter.generate_pdf(
                 portfolio=portfolio,
                 financial_profile=profile_dict,
                 provider=provider.upper() if provider else "AI",
                 model=model_name,
+                include_charts=True,
+                monte_carlo_lump_data=monte_carlo_lump_data,
+                monte_carlo_pac_data=monte_carlo_pac_data,
             )
 
             # Generate filename
