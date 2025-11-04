@@ -521,7 +521,9 @@ def _show_provider_selection():
 
     with col2:
         if "google" in available_providers:
-            if st.button("🌐 Google Gemini", use_container_width=True, key="google_btn"):
+            if st.button(
+                "🌐 Google Gemini", use_container_width=True, key="google_btn"
+            ):
                 logger.info("Google provider selected")
                 st.session_state.provider = "google"
                 st.session_state.agent_initialized = False
@@ -704,19 +706,43 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             help="Upload a JSON file with your financial profile data",
         )
 
+        # Detect file deletion (X button pressed)
+        if uploaded_json is None and st.session_state.profile_loaded_from_json:
+            logger.info("JSON file removed by user, clearing profile")
+            st.session_state.financial_profile = None
+            st.session_state.conversation_completed = False
+            st.session_state.generated_portfolio = None
+            st.session_state.profile_loaded_from_json = False
+            st.info("Profile cleared. Upload a new file to load a profile.")
+            st.rerun()
+
+        # Load profile when file is uploaded (but don't auto-analyze)
         if uploaded_json is not None and not st.session_state.profile_loaded_from_json:
             logger.debug("JSON file uploaded: %s", uploaded_json.name)
             profile = load_profile_from_json(uploaded_json)
 
             if profile:
                 st.session_state.financial_profile = profile
+                st.session_state.profile_loaded_from_json = True
+                # Don't set conversation_completed yet - wait for user to click analyze button
+                logger.info(
+                    "Profile loaded successfully, waiting for user to trigger analysis"
+                )
+                st.success(
+                    "Profile loaded successfully! Click 'Analyze Profile' below to start the analysis."
+                )
+
+        # Add explicit button to trigger analysis for loaded profile
+        if (
+            st.session_state.profile_loaded_from_json
+            and not st.session_state.conversation_completed
+        ):
+            if st.button(
+                "🔍 Analyze Profile", use_container_width=True, type="primary"
+            ):
+                logger.info("User triggered profile analysis")
                 st.session_state.conversation_completed = True
                 st.session_state.generated_portfolio = None
-                st.session_state.profile_loaded_from_json = True
-                logger.info(
-                    "Profile loaded successfully, auto-generation will happen in display section"
-                )
-                st.success("Profile loaded successfully!")
                 st.rerun()
 
         # Model info
@@ -1059,9 +1085,11 @@ def _display_wealth_simulation(
                         * (
                             next(
                                 (
-                                    a.get("percentage")
-                                    if isinstance(a, dict)
-                                    else a.percentage
+                                    (
+                                        a.get("percentage")
+                                        if isinstance(a, dict)
+                                        else a.percentage
+                                    )
                                     for a in portfolio["assets"]
                                     if (
                                         a.get("symbol")
@@ -1086,9 +1114,11 @@ def _display_wealth_simulation(
                                 * (
                                     next(
                                         (
-                                            a.get("percentage")
-                                            if isinstance(a, dict)
-                                            else a.percentage
+                                            (
+                                                a.get("percentage")
+                                                if isinstance(a, dict)
+                                                else a.percentage
+                                            )
                                             for a in portfolio["assets"]
                                             if (
                                                 a.get("symbol")
@@ -1507,12 +1537,16 @@ def _display_portfolio_details(portfolio, financial_advisor_agent):
         for asset in portfolio["assets"]:
             display_asset(
                 asset.get("symbol") if isinstance(asset, dict) else asset.symbol,
-                asset.get("percentage")
-                if isinstance(asset, dict)
-                else asset.percentage,
-                asset.get("justification")
-                if isinstance(asset, dict)
-                else asset.justification,
+                (
+                    asset.get("percentage")
+                    if isinstance(asset, dict)
+                    else asset.percentage
+                ),
+                (
+                    asset.get("justification")
+                    if isinstance(asset, dict)
+                    else asset.justification
+                ),
             )
 
     # Display portfolio pie chart
@@ -1841,9 +1875,9 @@ def main():
                                 ) or initialize_financial_advisor(
                                     st.session_state.provider
                                 )
-                                st.session_state[
-                                    "financial_advisor_agent"
-                                ] = financial_advisor_agent
+                                st.session_state["financial_advisor_agent"] = (
+                                    financial_advisor_agent
+                                )
 
                                 financial_profile = (
                                     financial_advisor_agent.extract_financial_profile(
