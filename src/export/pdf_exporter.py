@@ -7,13 +7,19 @@ and recommendations as a professional PDF document.
 
 import io
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from PIL import Image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    Image as RLImage,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -92,12 +98,85 @@ class PortfolioPDFExporter:
             )
         )
 
+    def _create_pie_chart(self, portfolio: Dict) -> Optional[RLImage]:
+        """
+        Create a pie chart for portfolio asset allocation.
+
+        Args:
+            portfolio: Portfolio dictionary containing assets
+
+        Returns:
+            ReportLab Image object or None if chart cannot be created
+        """
+        try:
+            if "assets" not in portfolio or not isinstance(portfolio["assets"], list):
+                return None
+
+            # Prepare data for pie chart
+            asset_symbols = []
+            asset_percentages = []
+
+            for asset in portfolio["assets"]:
+                symbol = self._get_asset_field(asset, "symbol")
+                percentage = self._get_asset_field(asset, "percentage")
+                if symbol and percentage:
+                    asset_symbols.append(symbol)
+                    asset_percentages.append(percentage)
+
+            if not asset_symbols:
+                return None
+
+            # Create DataFrame for plotly
+            df = pd.DataFrame({
+                'Asset': asset_symbols,
+                'Allocation': asset_percentages
+            })
+
+            # Create pie chart
+            fig = px.pie(
+                df,
+                values='Allocation',
+                names='Asset',
+                hole=0.3,
+            )
+
+            fig.update_traces(
+                textposition="inside",
+                textinfo="percent+label",
+            )
+
+            fig.update_layout(
+                height=350,
+                width=500,
+                showlegend=True,
+                margin=dict(l=20, r=20, t=40, b=20),
+                font=dict(size=10),
+            )
+
+            # Convert to image (requires kaleido)
+            try:
+                img_bytes = fig.to_image(format="png", width=500, height=350)
+                img_buffer = io.BytesIO(img_bytes)
+
+                # Create ReportLab Image
+                rl_image = RLImage(img_buffer, width=5 * inch, height=3.5 * inch)
+                return rl_image
+            except Exception:
+                # If kaleido is not available, return None gracefully
+                return None
+
+        except Exception as e:
+            # If chart generation fails, return None
+            # This ensures PDF generation continues even without charts
+            return None
+
     def generate_pdf(
         self,
         portfolio: Dict,
         financial_profile: Optional[Dict] = None,
         provider: str = "AI",
         model: str = "Unknown",
+        include_charts: bool = True,
     ) -> bytes:
         """
         Generate a PDF document containing portfolio analysis.
@@ -107,6 +186,7 @@ class PortfolioPDFExporter:
             financial_profile: Optional financial profile dictionary
             provider: LLM provider name
             model: Model name used for generation
+            include_charts: Whether to include charts/graphs in the PDF (default: True)
 
         Returns:
             PDF document as bytes
@@ -137,7 +217,7 @@ class PortfolioPDFExporter:
             story.append(PageBreak())
 
         # Add portfolio recommendation
-        story.extend(self._create_portfolio_section(portfolio))
+        story.extend(self._create_portfolio_section(portfolio, include_charts))
 
         # Add risk analysis
         story.extend(self._create_risk_section(portfolio))
@@ -302,7 +382,7 @@ class PortfolioPDFExporter:
             return asset.get(field)
         return getattr(asset, field, None)
 
-    def _create_portfolio_section(self, portfolio: Dict) -> list:
+    def _create_portfolio_section(self, portfolio: Dict, include_charts: bool = True) -> list:
         """Create portfolio recommendation section."""
         content = []
 
@@ -378,6 +458,22 @@ class PortfolioPDFExporter:
                 )
             )
             content.append(table)
+
+        content.append(Spacer(1, 0.2 * inch))
+
+        # Add pie chart if charts are enabled
+        if include_charts:
+            pie_chart = self._create_pie_chart(portfolio)
+            if pie_chart:
+                content.append(
+                    Paragraph(
+                        "<b>Asset Allocation Visualization:</b>",
+                        self.styles["SectionHeader"],
+                    )
+                )
+                content.append(Spacer(1, 0.1 * inch))
+                content.append(pie_chart)
+                content.append(Spacer(1, 0.1 * inch))
 
         content.append(Spacer(1, 0.3 * inch))
 

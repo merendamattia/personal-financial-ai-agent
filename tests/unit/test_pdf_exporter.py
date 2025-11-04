@@ -8,7 +8,7 @@ import io
 from datetime import datetime
 
 import pytest
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from src.export import PortfolioPDFExporter
 
