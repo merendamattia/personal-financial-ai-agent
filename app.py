@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
+from src.ui.settings_page import show_settings_page
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
     os.getenv("MONTECARLO_MIN_ASSET_VOLATILITY", 0.1)
@@ -478,6 +479,10 @@ def _initialize_session_state():
             None,
             "Initialized cached_returns_data session state to None",
         ),
+        "show_settings": (
+            False,
+            "Initialized show_settings session state to False",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -694,6 +699,12 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.agent_is_healthy = False
             st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
+        
+        # API Configuration button
+        if st.button("🔑 API Configuration", use_container_width=True):
+            logger.info("Opening API configuration settings")
+            st.session_state.show_settings = True
+            st.rerun()
 
         # Upload custom profile from JSON
         st.divider()
@@ -1574,6 +1585,11 @@ def main():
 
     # Initialize session state
     _initialize_session_state()
+    
+    # Show settings page if requested
+    if st.session_state.get("show_settings", False):
+        show_settings_page()
+        return
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
