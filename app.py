@@ -478,6 +478,10 @@ def _initialize_session_state():
             None,
             "Initialized cached_returns_data session state to None",
         ),
+        "scroll_to_portfolio": (
+            False,
+            "Initialized scroll_to_portfolio session state to False",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -521,7 +525,9 @@ def _show_provider_selection():
 
     with col2:
         if "google" in available_providers:
-            if st.button("🌐 Google Gemini", use_container_width=True, key="google_btn"):
+            if st.button(
+                "🌐 Google Gemini", use_container_width=True, key="google_btn"
+            ):
                 logger.info("Google provider selected")
                 st.session_state.provider = "google"
                 st.session_state.agent_initialized = False
@@ -678,6 +684,7 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.session_state.profile_loaded_from_json = False
+            st.session_state.scroll_to_portfolio = False
             st.rerun()
 
         # Clear history button
@@ -693,6 +700,7 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.health_check_done = False
             st.session_state.agent_is_healthy = False
             st.session_state.profile_loaded_from_json = False
+            st.session_state.scroll_to_portfolio = False
             st.success("Conversation cleared!")
 
         # Upload custom profile from JSON
@@ -1059,9 +1067,11 @@ def _display_wealth_simulation(
                         * (
                             next(
                                 (
-                                    a.get("percentage")
-                                    if isinstance(a, dict)
-                                    else a.percentage
+                                    (
+                                        a.get("percentage")
+                                        if isinstance(a, dict)
+                                        else a.percentage
+                                    )
                                     for a in portfolio["assets"]
                                     if (
                                         a.get("symbol")
@@ -1086,9 +1096,11 @@ def _display_wealth_simulation(
                                 * (
                                     next(
                                         (
-                                            a.get("percentage")
-                                            if isinstance(a, dict)
-                                            else a.percentage
+                                            (
+                                                a.get("percentage")
+                                                if isinstance(a, dict)
+                                                else a.percentage
+                                            )
                                             for a in portfolio["assets"]
                                             if (
                                                 a.get("symbol")
@@ -1507,12 +1519,16 @@ def _display_portfolio_details(portfolio, financial_advisor_agent):
         for asset in portfolio["assets"]:
             display_asset(
                 asset.get("symbol") if isinstance(asset, dict) else asset.symbol,
-                asset.get("percentage")
-                if isinstance(asset, dict)
-                else asset.percentage,
-                asset.get("justification")
-                if isinstance(asset, dict)
-                else asset.justification,
+                (
+                    asset.get("percentage")
+                    if isinstance(asset, dict)
+                    else asset.percentage
+                ),
+                (
+                    asset.get("justification")
+                    if isinstance(asset, dict)
+                    else asset.justification
+                ),
             )
 
     # Display portfolio pie chart
@@ -1665,6 +1681,11 @@ def main():
         # Generate and display portfolio
         if st.session_state.financial_profile:
             st.divider()
+            # Add HTML anchor for portfolio section
+            st.markdown(
+                '<div id="portfolio-section"></div>',
+                unsafe_allow_html=True,
+            )
             st.subheader("💼 AI-Generated Portfolio Recommendation")
 
             logger.debug("Preparing portfolio generation")
@@ -1683,6 +1704,7 @@ def main():
                     )
                     if portfolio:
                         st.session_state.generated_portfolio = portfolio
+                        st.session_state.scroll_to_portfolio = True
                         logger.info("Portfolio auto-generated successfully")
                     else:
                         logger.warning("Failed to generate portfolio")
@@ -1699,6 +1721,7 @@ def main():
                             )
                             if portfolio:
                                 st.session_state.generated_portfolio = portfolio
+                                st.session_state.scroll_to_portfolio = True
             else:
                 logger.debug("Portfolio already generated, displaying...")
 
@@ -1710,6 +1733,36 @@ def main():
                 _display_portfolio_details(
                     st.session_state.generated_portfolio, financial_advisor_agent
                 )
+
+                # Scroll to portfolio section if just generated
+                if st.session_state.scroll_to_portfolio:
+                    st.markdown(
+                        """
+                        <script>
+                        (function() {
+                            // Wait for DOM to be ready
+                            if (document.readyState === 'loading') {
+                                document.addEventListener('DOMContentLoaded', scrollToPortfolio);
+                            } else {
+                                scrollToPortfolio();
+                            }
+                            
+                            function scrollToPortfolio() {
+                                // Small delay to ensure all content is rendered
+                                setTimeout(function() {
+                                    var portfolioSection = document.getElementById('portfolio-section');
+                                    if (portfolioSection) {
+                                        portfolioSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                }, 100);
+                            }
+                        })();
+                        </script>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.session_state.scroll_to_portfolio = False
+                    logger.info("Scrolling to portfolio section")
 
                 # Show completion message after portfolio
                 st.divider()
@@ -1841,9 +1894,9 @@ def main():
                                 ) or initialize_financial_advisor(
                                     st.session_state.provider
                                 )
-                                st.session_state[
-                                    "financial_advisor_agent"
-                                ] = financial_advisor_agent
+                                st.session_state["financial_advisor_agent"] = (
+                                    financial_advisor_agent
+                                )
 
                                 financial_profile = (
                                     financial_advisor_agent.extract_financial_profile(
