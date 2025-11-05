@@ -1,3 +1,18 @@
+# [1.4.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.3...v1.4.0) (2025-11-05)
+
+
+### Bug Fixes
+
+* Add URL validation to prevent SSRF vulnerability ([f7e936a](https://github.com/merendamattia/personal-financial-ai-agent/commit/f7e936af5d18147e301e5c2d588feab34cf1532f))
+* Address code review feedback - improve security and error handling ([66dd8ef](https://github.com/merendamattia/personal-financial-ai-agent/commit/66dd8eff9e03a4e88cbdd9130a4e8a96c298120f))
+
+
+### Features
+
+* Add API key configuration UI with settings page ([e0fa6bf](https://github.com/merendamattia/personal-financial-ai-agent/commit/e0fa6bf859f72d7dfde064a2cc80f1c5d26d7e12))
+* add monthly contribution parameter to Monte Carlo simulation ([72ae5df](https://github.com/merendamattia/personal-financial-ai-agent/commit/72ae5df9d0b500b39c5e8f87a511878972fd7657))
+* implement API key validation and configuration UI for providers ([4ee7a29](https://github.com/merendamattia/personal-financial-ai-agent/commit/4ee7a293f857d2b818e13d7312d2cdb133e4bdf0))
+
 ## [1.3.3](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.2...v1.3.3) (2025-11-04)
 
 
