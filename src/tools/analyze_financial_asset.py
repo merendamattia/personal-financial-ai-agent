@@ -18,12 +18,6 @@ from src.models.tools import FinancialAnalysisResponse, SymbolResolution, YearRe
 logger = logging.getLogger(__name__)
 
 # Cache for storing financial analysis results (session-level)
-# Note: This cache grows indefinitely. In production, consider implementing:
-# - Cache size limits (e.g., LRU eviction)
-# - TTL-based expiration for stale data
-# - Periodic cleanup in long-running applications
-# For typical Streamlit sessions, this is acceptable as the cache is cleared
-# on app restart and session_state provides the primary cache layer.
 _CACHE = {}
 
 
