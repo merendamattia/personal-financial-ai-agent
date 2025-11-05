@@ -135,18 +135,21 @@ class TestAnalyzeFinancialAssetCaching:
             "total_return": 10.0,
         }
 
-        # First call should miss cache and call functions
-        result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
+        # Mock streamlit.session_state to support dynamic attributes
+        mock_session_state = MagicMock()
+        with patch("streamlit.session_state", mock_session_state):
+            # First call should miss cache and call functions
+            result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
 
-        # Verify functions were called
-        assert mock_search_symbol.called
-        assert mock_get_prices.called
-        assert mock_calc_returns.called
+            # Verify functions were called
+            assert mock_search_symbol.called
+            assert mock_get_prices.called
+            assert mock_calc_returns.called
 
-        # Verify result is valid JSON
-        data = json.loads(result1)
-        assert data["success"] is True
-        assert data["ticker"] == "SWDA"
+            # Verify result is valid JSON
+            data = json.loads(result1)
+            assert data["success"] is True
+            assert data["ticker"] == "SWDA"
 
     @patch("src.tools.analyze_financial_asset._search_and_resolve_symbol")
     @patch("src.tools.analyze_financial_asset._get_historical_prices_internal")
@@ -176,24 +179,27 @@ class TestAnalyzeFinancialAssetCaching:
             "total_return": 10.0,
         }
 
-        # First call - cache miss
-        result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
+        # Mock streamlit.session_state to support dynamic attributes
+        mock_session_state = MagicMock()
+        with patch("streamlit.session_state", mock_session_state):
+            # First call - cache miss
+            result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
 
-        # Reset mock call counts
-        mock_search_symbol.reset_mock()
-        mock_get_prices.reset_mock()
-        mock_calc_returns.reset_mock()
+            # Reset mock call counts
+            mock_search_symbol.reset_mock()
+            mock_get_prices.reset_mock()
+            mock_calc_returns.reset_mock()
 
-        # Second call - should hit cache
-        result2 = analyze_financial_asset("SWDA", years=10, use_cache=True)
+            # Second call - should hit cache
+            result2 = analyze_financial_asset("SWDA", years=10, use_cache=True)
 
-        # Verify functions were NOT called on second attempt
-        assert not mock_search_symbol.called
-        assert not mock_get_prices.called
-        assert not mock_calc_returns.called
+            # Verify functions were NOT called on second attempt
+            assert not mock_search_symbol.called
+            assert not mock_get_prices.called
+            assert not mock_calc_returns.called
 
-        # Results should be identical
-        assert result1 == result2
+            # Results should be identical
+            assert result1 == result2
 
     @patch("src.tools.analyze_financial_asset._search_and_resolve_symbol")
     @patch("src.tools.analyze_financial_asset._get_historical_prices_internal")
@@ -223,21 +229,24 @@ class TestAnalyzeFinancialAssetCaching:
             "total_return": 10.0,
         }
 
-        # First call with caching
-        result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
+        # Mock streamlit.session_state to support dynamic attributes
+        mock_session_state = MagicMock()
+        with patch("streamlit.session_state", mock_session_state):
+            # First call with caching
+            result1 = analyze_financial_asset("SWDA", years=10, use_cache=True)
 
-        # Reset mocks
-        mock_search_symbol.reset_mock()
-        mock_get_prices.reset_mock()
-        mock_calc_returns.reset_mock()
+            # Reset mocks
+            mock_search_symbol.reset_mock()
+            mock_get_prices.reset_mock()
+            mock_calc_returns.reset_mock()
 
-        # Second call with use_cache=False should call functions again
-        result2 = analyze_financial_asset("SWDA", years=10, use_cache=False)
+            # Second call with use_cache=False should call functions again
+            result2 = analyze_financial_asset("SWDA", years=10, use_cache=False)
 
-        # Verify functions WERE called even though data is cached
-        assert mock_search_symbol.called
-        assert mock_get_prices.called
-        assert mock_calc_returns.called
+            # Verify functions WERE called even though data is cached
+            assert mock_search_symbol.called
+            assert mock_get_prices.called
+            assert mock_calc_returns.called
 
     def test_cache_respects_case_insensitive_ticker(self):
         """Test that cache works with case-insensitive ticker symbols."""
