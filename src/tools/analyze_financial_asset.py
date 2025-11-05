@@ -6,7 +6,6 @@ for a comprehensive financial asset analysis.
 """
 
 import logging
-import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -19,6 +18,12 @@ from src.models.tools import FinancialAnalysisResponse, SymbolResolution, YearRe
 logger = logging.getLogger(__name__)
 
 # Cache for storing financial analysis results (session-level)
+# Note: This cache grows indefinitely. In production, consider implementing:
+# - Cache size limits (e.g., LRU eviction)
+# - TTL-based expiration for stale data
+# - Periodic cleanup in long-running applications
+# For typical Streamlit sessions, this is acceptable as the cache is cleared
+# on app restart and session_state provides the primary cache layer.
 _CACHE = {}
 
 
@@ -240,6 +245,11 @@ def analyze_financial_asset(
         result_json = response.model_dump_json()
 
         # Cache the successful result
+        # Note: Error responses are intentionally NOT cached because:
+        # 1. Transient errors (network issues, API rate limits) should be retried
+        # 2. Invalid tickers fail fast (symbol resolution is quick)
+        # 3. Caching errors could hide resolved issues
+        # If error caching is needed, implement with short TTL and proper invalidation
         if use_cache:
             _set_cached_analysis(ticker, years, result_json)
 
