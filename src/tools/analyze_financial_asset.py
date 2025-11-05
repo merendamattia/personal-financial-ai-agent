@@ -243,7 +243,8 @@ def analyze_financial_asset(
         # 1. Transient errors (network issues, API rate limits) should be retried
         # 2. Invalid tickers fail fast (symbol resolution is quick)
         # 3. Caching errors could hide resolved issues
-        # If error caching is needed, implement with short TTL and proper invalidation
+        # The current cache for successful responses has no expiration (no TTL).
+        # If error caching is needed in the future, implement with short TTL and proper invalidation.
         if use_cache:
             _set_cached_analysis(ticker, years, result_json)
 
