@@ -33,6 +33,9 @@ MONTECARLO_SIMULATION_YEARS = int(os.getenv("MONTECARLO_SIMULATION_YEARS", 20))
 MONTECARLO_DEFAULT_INITIAL_INVESTMENT = int(
     os.getenv("MONTECARLO_DEFAULT_INITIAL_INVESTMENT", 1000)
 )
+MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION = int(
+    os.getenv("MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION", 100)
+)
 
 # Configure logging
 logging.basicConfig(
@@ -1020,7 +1023,10 @@ def _extract_financial_metrics(
     try:
         if profile is None:
             logger.warning("Profile is None, returning defaults")
-            return 5000, 200
+            return (
+                MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+                MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+            )
 
         # Convert profile to dict for agent
         profile_dict = (
@@ -1044,9 +1050,14 @@ def _extract_financial_metrics(
     except Exception as e:
         logger.error("Error extracting PAC metrics: %s", str(e))
         logger.warning(
-            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €5000, Monthly €200"
+            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €%d, Monthly €%d",
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
         )
-        return 5000, 200  # Return defaults
+        return (
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+        )
 
 
 def _display_wealth_simulation(
@@ -1070,11 +1081,11 @@ def _display_wealth_simulation(
 
     # Display explanation of Long-Term Wealth Projection
     st.markdown(
-        """
+        f"""
     **📊 Cos'è questa simulazione?**
 
-    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta 1.000 scenari di crescita del portafoglio
-    su 20 anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
+    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta {MONTECARLO_SIMULATION_SCENARIOS} scenari di crescita del portafoglio
+    su {MONTECARLO_SIMULATION_YEARS} anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
     - **Pessimistico (10° percentile)**: Solo 1 scenario su 10 avrà risultati peggiori
     - **Atteso (50° percentile)**: Il valore più probabile (mediana)
     - **Ottimistico (75° percentile)**: 3 scenari su 4 rimangono sotto questo valore
@@ -1213,8 +1224,8 @@ def _display_wealth_simulation(
                         monthly_contribution,
                     )
                 else:
-                    initial_investment = 5000
-                    monthly_contribution = 200
+                    initial_investment = MONTECARLO_DEFAULT_INITIAL_INVESTMENT
+                    monthly_contribution = MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION
                     logger.warning(
                         "PAC SECTION - Profile is NONE, using default PAC parameters: Initial €%d, Monthly €%d",
                         initial_investment,
@@ -1292,7 +1303,7 @@ def _display_wealth_simulation(
                 )
 
                 fig_lump.update_layout(
-                    title="Lump Sum Investment - 20-Year Wealth Projection",
+                    title=f"Lump Sum Investment - {MONTECARLO_SIMULATION_YEARS}-Year Wealth Projection",
                     xaxis_title="Years",
                     yaxis_title="Portfolio Value (€)",
                     hovermode="x unified",
