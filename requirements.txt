@@ -104,6 +104,10 @@ jupyter_client==8.6.3
 jupyter_core==5.8.1
 kagglehub==0.3.12
 kiwisolver==1.4.8
+# langchain==0.2.1
+# langchain-community==0.2.1
+# langchain-huggingface==1.0.0
+# langchain-text-splitters==0.2.0
 latex2mathml==3.78.1
 lazy_loader==0.4
 loguru==0.7.3
@@ -188,7 +192,7 @@ readmeai==0.6.3
 referencing==0.37.0
 regex==2025.9.18
 reportlab==4.4.4
-requests==2.32.4
+requests==2.32.5
 rich==14.2.0
 rpds-py==0.27.1
 rsa==4.9.1

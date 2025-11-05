@@ -7,8 +7,21 @@ AI agent powered by datapizza-ai and multiple LLM providers.
 
 import logging
 import os
+import sys
 import time
 from typing import Optional
+
+# ==========================================================
+# --- BLOCCO DI CORREZIONE PERCORSI PER STREAMLIT ---
+# Aggiunge la directory principale del progetto al sys.path
+# per garantire che Python trovi sia i moduli locali (rag_lc)
+# sia i pacchetti interni (src).
+# ==========================================================
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+# ==========================================================
+
 
 import numpy as np
 import pandas as pd
@@ -16,11 +29,57 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+from datapizza.tools import tool  # <-- IMPORTA IL DECORATORE PER I TOOL
 from dotenv import load_dotenv
 
+from rag_lc import RAGService  # <-- IMPORTA IL NOSTRO NUOVO SERVIZIO
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
+
+############################################################################################
+#############################       ITEGRAZIONE RAG          ###############################
+############################################################################################
+
+
+
+# Inizializza il servizio RAG usando la cache di Streamlit
+# Questo garantisce che i modelli e il DB vengano caricati UNA SOLA VOLTA.
+@st.cache_resource
+def get_rag_service():
+    """Carica e restituisce un'istanza del RAGService."""
+    try:
+        service = RAGService()
+        return service
+    except FileNotFoundError as e:
+        st.error(f"Errore critico durante l'inizializzazione del RAG: {e}")
+        st.info(
+            "Assicurati che la cartella './dataset/ETFs_2' esista e contenga i tuoi file PDF."
+        )
+        return None
+
+
+# Carica il servizio all'avvio dell'app
+rag_service = get_rag_service()
+
+
+@tool
+def recupera_dati_da_documenti_etf(domanda_specifica: str) -> str:
+    """
+    Da usare per rispondere a domande tecniche e specifiche su un ETF,
+    come TER, ISIN, obiettivo del fondo, politica di distribuzione,
+    benchmark di riferimento o composizione.
+    L'input deve essere una domanda chiara e precisa.
+    """
+    if rag_service:
+        return rag_service.query(domanda_specifica)
+    return "Errore: il servizio di recupero documenti non è disponibile."
+
+
+############################################################################################
+##########################       FINE ITEGRAZIONE RAG          #############################
+############################################################################################
+
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
     os.getenv("MONTECARLO_MIN_ASSET_VOLATILITY", 0.1)
@@ -194,37 +253,72 @@ def initialize_chatbot(provider: str) -> ChatbotAgent:
         raise
 
 
+############################################################################################
+##########################      MODIFCA PER ITEGRAZIONE RAG       ##########################
+############################################################################################
+
+# # SCOMMENTA PER TORNARE ALLA VERSIONE PRECEDENTE DI app.py
+# @st.cache_resource
+# def initialize_financial_advisor(
+#     provider: str, name: Optional[str] = None
+# ) -> FinancialAdvisorAgent:
+#     """
+#     Initialize the financial advisor agent (with RAG and portfolio generation).
+
+#     Args:
+#         provider: The LLM provider to use
+
+#     Returns:
+#         Initialized FinancialAdvisorAgent instance
+#     """
+#     logger.debug("Initializing financial advisor agent with provider: %s", provider)
+
+#     try:
+#         agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
+#         logger.info(
+#             "Financial advisor agent '%s' initialized successfully with provider: %s",
+#             agent.name,
+#             provider,
+#         )
+#         return agent
+#     except Exception as e:
+#         logger.error(
+#             "Failed to initialize financial advisor agent with provider %s: %s",
+#             provider,
+#             str(e),
+#             exc_info=True,
+#         )
+#         raise
+
+
 @st.cache_resource
 def initialize_financial_advisor(
     provider: str, name: Optional[str] = None
 ) -> FinancialAdvisorAgent:
-    """
-    Initialize the financial advisor agent (with RAG and portfolio generation).
-
-    Args:
-        provider: The LLM provider to use
-
-    Returns:
-        Initialized FinancialAdvisorAgent instance
-    """
-    logger.debug("Initializing financial advisor agent with provider: %s", provider)
-
+    """Initialize the financial advisor agent with RAG and portfolio generation."""
+    logger.debug(f"Initializing financial advisor agent with provider: {provider}")
     try:
-        agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
+        # Aggiungiamo il nostro nuovo tool alla lista di strumenti dell'agente
+        agent = FinancialAdvisorAgent(
+            name="FinancialAdvisorAgent",
+            provider=provider,
+            tools=[recupera_dati_da_documenti_etf],  # <-- MODIFICA CHIAVE
+        )
         logger.info(
-            "Financial advisor agent '%s' initialized successfully with provider: %s",
-            agent.name,
-            provider,
+            f"Financial advisor agent '{agent.name}' initialized successfully with provider: {provider}"
         )
         return agent
     except Exception as e:
         logger.error(
-            "Failed to initialize financial advisor agent with provider %s: %s",
-            provider,
-            str(e),
+            f"Failed to initialize financial advisor agent with provider: {provider}",
             exc_info=True,
         )
         raise
+
+
+############################################################################################
+########################    FINE MODIFCA PER ITEGRAZIONE RAG      ##########################
+############################################################################################
 
 
 def stream_text(text: str, chunk_size: int = 20):
