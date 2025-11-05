@@ -7,8 +7,6 @@ Tests verify that the caching mechanism works correctly for financial asset anal
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.tools.analyze_financial_asset import (
     _CACHE,
     _get_cache_key,
@@ -243,6 +241,7 @@ class TestAnalyzeFinancialAssetCaching:
             # Second call with use_cache=False should call functions again
             result2 = analyze_financial_asset("SWDA", years=10, use_cache=False)
 
+            assert result2 == result1
             # Verify functions WERE called even though data is cached
             assert mock_search_symbol.called
             assert mock_get_prices.called
