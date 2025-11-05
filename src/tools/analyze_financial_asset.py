@@ -4,9 +4,10 @@ Unified financial analysis tool.
 This module provides a single tool that combines price retrieval and return calculation
 for a comprehensive financial asset analysis.
 """
+
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yfinance as yf
 from datapizza.tools import tool
@@ -16,9 +17,94 @@ from src.models.tools import FinancialAnalysisResponse, SymbolResolution, YearRe
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Cache for storing financial analysis results (session-level)
+_CACHE = {}
+
+
+def _get_cache_key(ticker: str, years: int) -> str:
+    """
+    Generate a cache key for the given ticker and years.
+
+    Args:
+        ticker: The ticker symbol
+        years: Number of years to analyze
+
+    Returns:
+        str: Cache key in format "{TICKER}_{years}"
+    """
+    return f"{ticker.upper()}_{years}"
+
+
+def _get_cached_analysis(ticker: str, years: int) -> Optional[str]:
+    """
+    Retrieve cached analysis result if available.
+
+    Args:
+        ticker: The ticker symbol
+        years: Number of years to analyze
+
+    Returns:
+        Optional[str]: Cached JSON response or None if not found
+    """
+    cache_key = _get_cache_key(ticker, years)
+
+    # Try to get from Streamlit session state first (if available)
+    try:
+        import streamlit as st
+
+        if hasattr(st, "session_state") and hasattr(
+            st.session_state, "financial_asset_cache"
+        ):
+            cache = st.session_state.financial_asset_cache
+            if cache_key in cache:
+                logger.info("Cache HIT for %s (from session_state)", cache_key)
+                return cache[cache_key]
+    except (ImportError, RuntimeError):
+        # Streamlit not available or not in a session context
+        pass
+
+    # Fall back to module-level cache
+    if cache_key in _CACHE:
+        logger.info("Cache HIT for %s (from module cache)", cache_key)
+        return _CACHE[cache_key]
+
+    logger.info("Cache MISS for %s", cache_key)
+    return None
+
+
+def _set_cached_analysis(ticker: str, years: int, result: str) -> None:
+    """
+    Store analysis result in cache.
+
+    Args:
+        ticker: The ticker symbol
+        years: Number of years to analyze
+        result: JSON response to cache
+    """
+    cache_key = _get_cache_key(ticker, years)
+
+    # Try to store in Streamlit session state first (if available)
+    try:
+        import streamlit as st
+
+        if hasattr(st, "session_state"):
+            if not hasattr(st.session_state, "financial_asset_cache"):
+                st.session_state.financial_asset_cache = {}
+            st.session_state.financial_asset_cache[cache_key] = result
+            logger.debug("Cached result for %s in session_state", cache_key)
+    except (ImportError, RuntimeError):
+        # Streamlit not available or not in a session context
+        pass
+
+    # Also store in module-level cache as fallback
+    _CACHE[cache_key] = result
+    logger.debug("Cached result for %s in module cache", cache_key)
+
 
 @tool
-def analyze_financial_asset(ticker: str, years: int = 10) -> str:
+def analyze_financial_asset(
+    ticker: str, years: int = 10, use_cache: bool = True
+) -> str:
     """
     Comprehensive financial asset analysis tool.
 
@@ -28,10 +114,14 @@ def analyze_financial_asset(ticker: str, years: int = 10) -> str:
     3. Calculating returns for 1, 2, 3, 4, and 5 years (or specified years)
     4. Returning a structured JSON response with all key metrics
 
+    Results are cached per session to improve performance for repeated queries.
+
     Args:
         ticker: The stock/ETF ticker symbol (e.g., 'SWDA', 'AAPL', 'BND')
         years: Number of years to analyze (default: 10). Returns will be calculated
                for each year from 1 to the specified number of years.
+        use_cache: Whether to use cached results if available (default: True).
+                   Set to False to force fresh data retrieval.
 
     Returns:
         str: A JSON string containing the analysis response with:
@@ -48,7 +138,18 @@ def analyze_financial_asset(ticker: str, years: int = 10) -> str:
             - error: Error message if unsuccessful
     """
     try:
-        logger.info("Starting analysis for %s with %d years", ticker, years)
+        logger.info(
+            "Starting analysis for %s with %d years (use_cache=%s)",
+            ticker,
+            years,
+            use_cache,
+        )
+
+        # Check cache if enabled
+        if use_cache:
+            cached_result = _get_cached_analysis(ticker, years)
+            if cached_result is not None:
+                return cached_result
 
         # Step 1: Resolve symbol
         symbol_resolution = _search_and_resolve_symbol(ticker)
@@ -135,7 +236,19 @@ def analyze_financial_asset(ticker: str, years: int = 10) -> str:
         )
 
         logger.info("Analysis completed successfully")
-        return response.model_dump_json()
+        result_json = response.model_dump_json()
+
+        # Cache the successful result
+        # Note: Error responses are intentionally NOT cached because:
+        # 1. Transient errors (network issues, API rate limits) should be retried
+        # 2. Invalid tickers fail fast (symbol resolution is quick)
+        # 3. Caching errors could hide resolved issues
+        # The current cache for successful responses has no expiration (no TTL).
+        # If error caching is needed in the future, implement with short TTL and proper invalidation.
+        if use_cache:
+            _set_cached_analysis(ticker, years, result_json)
+
+        return result_json
 
     except Exception as e:
         logger.error("Error during analysis: %s", str(e), exc_info=True)
@@ -387,9 +500,11 @@ def _calculate_returns_internal(
                 logger.debug(
                     "%d-year return: %.2f%%",
                     year,
-                    returns_dict[f"{year}_year"]
-                    if isinstance(returns_dict[f"{year}_year"], (int, float))
-                    else None,
+                    (
+                        returns_dict[f"{year}_year"]
+                        if isinstance(returns_dict[f"{year}_year"], (int, float))
+                        else None
+                    ),
                 )
             else:
                 returns_dict[f"{year}_year"] = "N/A"
