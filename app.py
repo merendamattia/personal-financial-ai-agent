@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
+from src.ui.settings_page import show_settings_page
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
     os.getenv("MONTECARLO_MIN_ASSET_VOLATILITY", 0.1)
@@ -31,6 +32,9 @@ MONTECARLO_SIMULATION_SCENARIOS = int(
 MONTECARLO_SIMULATION_YEARS = int(os.getenv("MONTECARLO_SIMULATION_YEARS", 20))
 MONTECARLO_DEFAULT_INITIAL_INVESTMENT = int(
     os.getenv("MONTECARLO_DEFAULT_INITIAL_INVESTMENT", 1000)
+)
+MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION = int(
+    os.getenv("MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION", 100)
 )
 
 # Configure logging
@@ -99,15 +103,70 @@ def is_ollama_available() -> bool:
     return False
 
 
+def _check_api_key_validity(provider: str) -> bool:
+    """
+    Check if API key for a provider is valid and configured using actual connection tests.
+
+    Args:
+        provider: The provider name (openai, google, ollama)
+
+    Returns:
+        True if API key is valid, False otherwise
+    """
+    logger.debug("Checking API key validity for provider: %s", provider)
+
+    try:
+        from src.ui.settings_page import (
+            _test_google_connection,
+            _test_ollama_connection,
+            _test_openai_connection,
+        )
+
+        if provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("OpenAI API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            success, _ = _test_openai_connection(api_key, model)
+            logger.debug("OpenAI API key validity: %s", success)
+            return success
+
+        elif provider == "google":
+            api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("Google API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash-exp")
+            success, _ = _test_google_connection(api_key, model)
+            logger.debug("Google API key validity: %s", success)
+            return success
+
+        elif provider == "ollama":
+            # Ollama doesn't need API key, just needs to be running
+            logger.debug("Ollama provider doesn't require API key validation")
+            return is_ollama_available()
+
+        else:
+            logger.warning("Unknown provider: %s", provider)
+            return False
+
+    except Exception as e:
+        logger.error("Error checking API key validity for %s: %s", provider, str(e))
+        return False
+
+
 def get_available_providers() -> list:
     """
-    Get list of available providers.
-    Ollama is only available if it's running.
+    Get list of available providers with valid API keys.
+    Only returns providers that have valid credentials configured.
 
     Returns:
         List of available provider names
     """
-    logger.debug("Getting available providers")
+    logger.debug("Getting available providers with valid API keys")
 
     all_providers = list_providers()
     logger.debug("All registered providers: %s", all_providers)
@@ -122,9 +181,14 @@ def get_available_providers() -> list:
             else:
                 logger.debug("Ollama is not available")
         else:
-            # Google and OpenAI are always available (if API keys are set, they'll work)
-            available.append(provider)
-            logger.debug("Provider %s is available", provider)
+            # Check if API key is valid for Google and OpenAI
+            if _check_api_key_validity(provider):
+                available.append(provider)
+                logger.debug("Provider %s is available with valid API key", provider)
+            else:
+                logger.debug(
+                    "Provider %s is not available (no valid API key)", provider
+                )
 
     logger.info("Available providers: %s", available)
     return available
@@ -495,6 +559,14 @@ def _initialize_session_state():
             None,
             "Initialized cached_returns_data session state to None",
         ),
+        "show_settings": (
+            False,
+            "Initialized show_settings session state to False",
+        ),
+        "skip_initial_settings": (
+            False,
+            "Initialized skip_initial_settings session state to False",
+        ),
     }
 
     for key, (default_value, debug_message) in session_state_defaults.items():
@@ -563,6 +635,11 @@ def _show_provider_selection():
                 disabled=True,
                 use_container_width=True,
             )
+
+    if st.button("🔑 Configure API Keys", use_container_width=True):
+        logger.info("Opening API configuration from provider selection")
+        st.session_state.show_settings = True
+        st.rerun()
 
     st.divider()
     st.info(
@@ -711,6 +788,12 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.agent_is_healthy = False
             st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
+
+        # API Configuration button
+        if st.button("🔑 API Configuration", use_container_width=True):
+            logger.info("Opening API configuration settings")
+            st.session_state.show_settings = True
+            st.rerun()
 
         # Upload custom profile from JSON
         st.divider()
@@ -981,7 +1064,10 @@ def _extract_financial_metrics(
     try:
         if profile is None:
             logger.warning("Profile is None, returning defaults")
-            return 5000, 200
+            return (
+                MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+                MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+            )
 
         # Convert profile to dict for agent
         profile_dict = (
@@ -1005,9 +1091,14 @@ def _extract_financial_metrics(
     except Exception as e:
         logger.error("Error extracting PAC metrics: %s", str(e))
         logger.warning(
-            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €5000, Monthly €200"
+            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €%d, Monthly €%d",
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
         )
-        return 5000, 200  # Return defaults
+        return (
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+        )
 
 
 def _display_wealth_simulation(
@@ -1031,11 +1122,11 @@ def _display_wealth_simulation(
 
     # Display explanation of Long-Term Wealth Projection
     st.markdown(
-        """
+        f"""
     **📊 Cos'è questa simulazione?**
 
-    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta 1.000 scenari di crescita del portafoglio
-    su 20 anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
+    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta {MONTECARLO_SIMULATION_SCENARIOS} scenari di crescita del portafoglio
+    su {MONTECARLO_SIMULATION_YEARS} anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
     - **Pessimistico (10° percentile)**: Solo 1 scenario su 10 avrà risultati peggiori
     - **Atteso (50° percentile)**: Il valore più probabile (mediana)
     - **Ottimistico (75° percentile)**: 3 scenari su 4 rimangono sotto questo valore
@@ -1178,8 +1269,8 @@ def _display_wealth_simulation(
                         monthly_contribution,
                     )
                 else:
-                    initial_investment = 5000
-                    monthly_contribution = 200
+                    initial_investment = MONTECARLO_DEFAULT_INITIAL_INVESTMENT
+                    monthly_contribution = MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION
                     logger.warning(
                         "PAC SECTION - Profile is NONE, using default PAC parameters: Initial €%d, Monthly €%d",
                         initial_investment,
@@ -1257,7 +1348,7 @@ def _display_wealth_simulation(
                 )
 
                 fig_lump.update_layout(
-                    title="Lump Sum Investment - 20-Year Wealth Projection",
+                    title=f"Lump Sum Investment - {MONTECARLO_SIMULATION_YEARS}-Year Wealth Projection",
                     xaxis_title="Years",
                     yaxis_title="Portfolio Value (€)",
                     hovermode="x unified",
@@ -1623,6 +1714,39 @@ def main():
 
     # Initialize session state
     _initialize_session_state()
+
+    # Check if any providers are available
+    available_providers = get_available_providers()
+    logger.debug("Available providers on startup: %s", available_providers)
+
+    # Show API key configuration on first load only if NO providers are available
+    if not st.session_state.skip_initial_settings and not available_providers:
+        logger.debug(
+            "First load with no available providers - showing API key configuration page"
+        )
+        _show_header()
+        st.subheader("🔑 Configure Your API Keys")
+        st.markdown(
+            "Welcome! No LLM providers are currently configured. Let's set up your API keys and LLM provider settings before we get started."
+        )
+        show_settings_page()
+
+        # Add button to proceed to provider selection
+        if st.button("✅ Continue to Provider Selection", use_container_width=True):
+            logger.info("User proceeding to provider selection after configuration")
+            st.session_state.skip_initial_settings = True
+            st.rerun()
+        return
+
+    # Mark initial settings as skipped if we reach here (at least one provider is available)
+    if not st.session_state.skip_initial_settings and available_providers:
+        logger.debug("Skipping initial settings - at least one provider is available")
+        st.session_state.skip_initial_settings = True
+
+    # Show settings page if requested from sidebar
+    if st.session_state.get("show_settings", False):
+        show_settings_page()
+        return
 
     # Provider selection modal on first load
     if st.session_state.provider is None:
