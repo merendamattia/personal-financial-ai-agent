@@ -4,6 +4,7 @@ Unified financial analysis tool.
 This module provides a single tool that combines price retrieval and return calculation
 for a comprehensive financial asset analysis.
 """
+
 import logging
 import time
 from datetime import datetime, timedelta
@@ -47,11 +48,14 @@ def _get_cached_analysis(ticker: str, years: int) -> Optional[str]:
         Optional[str]: Cached JSON response or None if not found
     """
     cache_key = _get_cache_key(ticker, years)
-    
+
     # Try to get from Streamlit session state first (if available)
     try:
         import streamlit as st
-        if hasattr(st, 'session_state') and hasattr(st.session_state, 'financial_asset_cache'):
+
+        if hasattr(st, "session_state") and hasattr(
+            st.session_state, "financial_asset_cache"
+        ):
             cache = st.session_state.financial_asset_cache
             if cache_key in cache:
                 logger.info("Cache HIT for %s (from session_state)", cache_key)
@@ -59,12 +63,12 @@ def _get_cached_analysis(ticker: str, years: int) -> Optional[str]:
     except (ImportError, RuntimeError):
         # Streamlit not available or not in a session context
         pass
-    
+
     # Fall back to module-level cache
     if cache_key in _CACHE:
         logger.info("Cache HIT for %s (from module cache)", cache_key)
         return _CACHE[cache_key]
-    
+
     logger.info("Cache MISS for %s", cache_key)
     return None
 
@@ -79,26 +83,29 @@ def _set_cached_analysis(ticker: str, years: int, result: str) -> None:
         result: JSON response to cache
     """
     cache_key = _get_cache_key(ticker, years)
-    
+
     # Try to store in Streamlit session state first (if available)
     try:
         import streamlit as st
-        if hasattr(st, 'session_state'):
-            if not hasattr(st.session_state, 'financial_asset_cache'):
+
+        if hasattr(st, "session_state"):
+            if not hasattr(st.session_state, "financial_asset_cache"):
                 st.session_state.financial_asset_cache = {}
             st.session_state.financial_asset_cache[cache_key] = result
             logger.debug("Cached result for %s in session_state", cache_key)
     except (ImportError, RuntimeError):
         # Streamlit not available or not in a session context
         pass
-    
+
     # Also store in module-level cache as fallback
     _CACHE[cache_key] = result
     logger.debug("Cached result for %s in module cache", cache_key)
 
 
 @tool
-def analyze_financial_asset(ticker: str, years: int = 10, use_cache: bool = True) -> str:
+def analyze_financial_asset(
+    ticker: str, years: int = 10, use_cache: bool = True
+) -> str:
     """
     Comprehensive financial asset analysis tool.
 
@@ -132,8 +139,13 @@ def analyze_financial_asset(ticker: str, years: int = 10, use_cache: bool = True
             - error: Error message if unsuccessful
     """
     try:
-        logger.info("Starting analysis for %s with %d years (use_cache=%s)", ticker, years, use_cache)
-        
+        logger.info(
+            "Starting analysis for %s with %d years (use_cache=%s)",
+            ticker,
+            years,
+            use_cache,
+        )
+
         # Check cache if enabled
         if use_cache:
             cached_result = _get_cached_analysis(ticker, years)
@@ -226,11 +238,11 @@ def analyze_financial_asset(ticker: str, years: int = 10, use_cache: bool = True
 
         logger.info("Analysis completed successfully")
         result_json = response.model_dump_json()
-        
+
         # Cache the successful result
         if use_cache:
             _set_cached_analysis(ticker, years, result_json)
-        
+
         return result_json
 
     except Exception as e:
@@ -483,9 +495,11 @@ def _calculate_returns_internal(
                 logger.debug(
                     "%d-year return: %.2f%%",
                     year,
-                    returns_dict[f"{year}_year"]
-                    if isinstance(returns_dict[f"{year}_year"], (int, float))
-                    else None,
+                    (
+                        returns_dict[f"{year}_year"]
+                        if isinstance(returns_dict[f"{year}_year"], (int, float))
+                        else None
+                    ),
                 )
             else:
                 returns_dict[f"{year}_year"] = "N/A"
