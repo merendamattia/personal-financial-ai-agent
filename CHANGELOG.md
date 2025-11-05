@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.4.0...v1.5.0) (2025-11-05)
+
+
+### Features
+
+* implement caching mechanism for analyze_financial_asset ([1136a0f](https://github.com/merendamattia/personal-financial-ai-agent/commit/1136a0faceab38f1d753a858ef7b325f428ee359))
+
 # [1.4.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.3.3...v1.4.0) (2025-11-05)
 
 
