@@ -7,21 +7,8 @@ AI agent powered by datapizza-ai and multiple LLM providers.
 
 import logging
 import os
-import sys
 import time
 from typing import Optional
-
-# ==========================================================
-# --- BLOCCO DI CORREZIONE PERCORSI PER STREAMLIT ---
-# Aggiunge la directory principale del progetto al sys.path
-# per garantire che Python trovi sia i moduli locali (rag_lc)
-# sia i pacchetti interni (src).
-# ==========================================================
-project_root = os.path.dirname(os.path.abspath(__file__))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-# ==========================================================
-
 
 import numpy as np
 import pandas as pd
@@ -29,57 +16,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-from datapizza.tools import tool  # <-- IMPORTA IL DECORATORE PER I TOOL
 from dotenv import load_dotenv
 
-from rag_lc import RAGService  # <-- IMPORTA IL NOSTRO NUOVO SERVIZIO
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
-
-############################################################################################
-#############################       ITEGRAZIONE RAG          ###############################
-############################################################################################
-
-
-
-# Inizializza il servizio RAG usando la cache di Streamlit
-# Questo garantisce che i modelli e il DB vengano caricati UNA SOLA VOLTA.
-@st.cache_resource
-def get_rag_service():
-    """Carica e restituisce un'istanza del RAGService."""
-    try:
-        service = RAGService()
-        return service
-    except FileNotFoundError as e:
-        st.error(f"Errore critico durante l'inizializzazione del RAG: {e}")
-        st.info(
-            "Assicurati che la cartella './dataset/ETFs_2' esista e contenga i tuoi file PDF."
-        )
-        return None
-
-
-# Carica il servizio all'avvio dell'app
-rag_service = get_rag_service()
-
-
-@tool
-def recupera_dati_da_documenti_etf(domanda_specifica: str) -> str:
-    """
-    Da usare per rispondere a domande tecniche e specifiche su un ETF,
-    come TER, ISIN, obiettivo del fondo, politica di distribuzione,
-    benchmark di riferimento o composizione.
-    L'input deve essere una domanda chiara e precisa.
-    """
-    if rag_service:
-        return rag_service.query(domanda_specifica)
-    return "Errore: il servizio di recupero documenti non è disponibile."
-
-
-############################################################################################
-##########################       FINE ITEGRAZIONE RAG          #############################
-############################################################################################
-
+from src.ui.settings_page import show_settings_page
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
     os.getenv("MONTECARLO_MIN_ASSET_VOLATILITY", 0.1)
@@ -90,6 +32,9 @@ MONTECARLO_SIMULATION_SCENARIOS = int(
 MONTECARLO_SIMULATION_YEARS = int(os.getenv("MONTECARLO_SIMULATION_YEARS", 20))
 MONTECARLO_DEFAULT_INITIAL_INVESTMENT = int(
     os.getenv("MONTECARLO_DEFAULT_INITIAL_INVESTMENT", 1000)
+)
+MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION = int(
+    os.getenv("MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION", 100)
 )
 
 # Configure logging
@@ -158,15 +103,70 @@ def is_ollama_available() -> bool:
     return False
 
 
+def _check_api_key_validity(provider: str) -> bool:
+    """
+    Check if API key for a provider is valid and configured using actual connection tests.
+
+    Args:
+        provider: The provider name (openai, google, ollama)
+
+    Returns:
+        True if API key is valid, False otherwise
+    """
+    logger.debug("Checking API key validity for provider: %s", provider)
+
+    try:
+        from src.ui.settings_page import (
+            _test_google_connection,
+            _test_ollama_connection,
+            _test_openai_connection,
+        )
+
+        if provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("OpenAI API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            success, _ = _test_openai_connection(api_key, model)
+            logger.debug("OpenAI API key validity: %s", success)
+            return success
+
+        elif provider == "google":
+            api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+            if not api_key:
+                logger.debug("Google API key not configured")
+                return False
+            # Test the connection
+            model = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash-exp")
+            success, _ = _test_google_connection(api_key, model)
+            logger.debug("Google API key validity: %s", success)
+            return success
+
+        elif provider == "ollama":
+            # Ollama doesn't need API key, just needs to be running
+            logger.debug("Ollama provider doesn't require API key validation")
+            return is_ollama_available()
+
+        else:
+            logger.warning("Unknown provider: %s", provider)
+            return False
+
+    except Exception as e:
+        logger.error("Error checking API key validity for %s: %s", provider, str(e))
+        return False
+
+
 def get_available_providers() -> list:
     """
-    Get list of available providers.
-    Ollama is only available if it's running.
+    Get list of available providers with valid API keys.
+    Only returns providers that have valid credentials configured.
 
     Returns:
         List of available provider names
     """
-    logger.debug("Getting available providers")
+    logger.debug("Getting available providers with valid API keys")
 
     all_providers = list_providers()
     logger.debug("All registered providers: %s", all_providers)
@@ -181,9 +181,14 @@ def get_available_providers() -> list:
             else:
                 logger.debug("Ollama is not available")
         else:
-            # Google and OpenAI are always available (if API keys are set, they'll work)
-            available.append(provider)
-            logger.debug("Provider %s is available", provider)
+            # Check if API key is valid for Google and OpenAI
+            if _check_api_key_validity(provider):
+                available.append(provider)
+                logger.debug("Provider %s is available with valid API key", provider)
+            else:
+                logger.debug(
+                    "Provider %s is not available (no valid API key)", provider
+                )
 
     logger.info("Available providers: %s", available)
     return available
@@ -253,72 +258,37 @@ def initialize_chatbot(provider: str) -> ChatbotAgent:
         raise
 
 
-############################################################################################
-##########################      MODIFCA PER ITEGRAZIONE RAG       ##########################
-############################################################################################
-
-# # SCOMMENTA PER TORNARE ALLA VERSIONE PRECEDENTE DI app.py
-# @st.cache_resource
-# def initialize_financial_advisor(
-#     provider: str, name: Optional[str] = None
-# ) -> FinancialAdvisorAgent:
-#     """
-#     Initialize the financial advisor agent (with RAG and portfolio generation).
-
-#     Args:
-#         provider: The LLM provider to use
-
-#     Returns:
-#         Initialized FinancialAdvisorAgent instance
-#     """
-#     logger.debug("Initializing financial advisor agent with provider: %s", provider)
-
-#     try:
-#         agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
-#         logger.info(
-#             "Financial advisor agent '%s' initialized successfully with provider: %s",
-#             agent.name,
-#             provider,
-#         )
-#         return agent
-#     except Exception as e:
-#         logger.error(
-#             "Failed to initialize financial advisor agent with provider %s: %s",
-#             provider,
-#             str(e),
-#             exc_info=True,
-#         )
-#         raise
-
-
 @st.cache_resource
 def initialize_financial_advisor(
     provider: str, name: Optional[str] = None
 ) -> FinancialAdvisorAgent:
-    """Initialize the financial advisor agent with RAG and portfolio generation."""
-    logger.debug(f"Initializing financial advisor agent with provider: {provider}")
+    """
+    Initialize the financial advisor agent (with RAG and portfolio generation).
+
+    Args:
+        provider: The LLM provider to use
+
+    Returns:
+        Initialized FinancialAdvisorAgent instance
+    """
+    logger.debug("Initializing financial advisor agent with provider: %s", provider)
+
     try:
-        # Aggiungiamo il nostro nuovo tool alla lista di strumenti dell'agente
-        agent = FinancialAdvisorAgent(
-            name="FinancialAdvisorAgent",
-            provider=provider,
-            tools=[recupera_dati_da_documenti_etf],  # <-- MODIFICA CHIAVE
-        )
+        agent = FinancialAdvisorAgent(name="FinancialAdvisorAgent", provider=provider)
         logger.info(
-            f"Financial advisor agent '{agent.name}' initialized successfully with provider: {provider}"
+            "Financial advisor agent '%s' initialized successfully with provider: %s",
+            agent.name,
+            provider,
         )
         return agent
     except Exception as e:
         logger.error(
-            f"Failed to initialize financial advisor agent with provider: {provider}",
+            "Failed to initialize financial advisor agent with provider %s: %s",
+            provider,
+            str(e),
             exc_info=True,
         )
         raise
-
-
-############################################################################################
-########################    FINE MODIFCA PER ITEGRAZIONE RAG      ##########################
-############################################################################################
 
 
 def stream_text(text: str, chunk_size: int = 20):
@@ -525,6 +495,23 @@ def _generate_portfolio_for_profile(advisor_agent, profile):
         return None
 
 
+def _clear_loaded_profile():
+    """
+    Clear the loaded financial profile and related state.
+
+    This is called when the user deletes an uploaded JSON file or
+    wants to reset the profile without clearing the entire conversation.
+
+    Returns:
+        None (modifies st.session_state)
+    """
+    logger.info("Clearing loaded profile and related state")
+    st.session_state.financial_profile = None
+    st.session_state.conversation_completed = False
+    st.session_state.generated_portfolio = None
+    st.session_state.profile_loaded_from_json = False
+
+
 def _initialize_session_state():
     """
     Initialize all required session state variables.
@@ -571,6 +558,14 @@ def _initialize_session_state():
         "cached_returns_data": (
             None,
             "Initialized cached_returns_data session state to None",
+        ),
+        "show_settings": (
+            False,
+            "Initialized show_settings session state to False",
+        ),
+        "skip_initial_settings": (
+            False,
+            "Initialized skip_initial_settings session state to False",
         ),
     }
 
@@ -640,6 +635,11 @@ def _show_provider_selection():
                 disabled=True,
                 use_container_width=True,
             )
+
+    if st.button("🔑 Configure API Keys", use_container_width=True):
+        logger.info("Opening API configuration from provider selection")
+        st.session_state.show_settings = True
+        st.rerun()
 
     st.divider()
     st.info(
@@ -789,6 +789,12 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             st.session_state.profile_loaded_from_json = False
             st.success("Conversation cleared!")
 
+        # API Configuration button
+        if st.button("🔑 API Configuration", use_container_width=True):
+            logger.info("Opening API configuration settings")
+            st.session_state.show_settings = True
+            st.rerun()
+
         # Upload custom profile from JSON
         st.divider()
         st.subheader("📤 Load Custom Profile")
@@ -798,19 +804,43 @@ def _setup_sidebar(chatbot_agent, financial_advisor_agent):
             help="Upload a JSON file with your financial profile data",
         )
 
+        # Detect file deletion (X button pressed)
+        # When uploaded_json is None but profile_loaded_from_json is True,
+        # it means the user removed the file via the X button
+        if uploaded_json is None and st.session_state.profile_loaded_from_json:
+            logger.info("JSON file removed by user, clearing profile")
+            _clear_loaded_profile()
+            st.info("Profile cleared. Upload a new file to load a profile.")
+            st.rerun()
+
+        # Load profile when file is first uploaded (but don't auto-analyze)
+        # Both conditions are required:
+        # 1. uploaded_json is not None: User has selected a file
+        # 2. not profile_loaded_from_json: This is a new upload, not a re-render
         if uploaded_json is not None and not st.session_state.profile_loaded_from_json:
             logger.debug("JSON file uploaded: %s", uploaded_json.name)
             profile = load_profile_from_json(uploaded_json)
 
             if profile:
                 st.session_state.financial_profile = profile
+                st.session_state.profile_loaded_from_json = True
+                # Don't set conversation_completed yet - wait for user to click analyze button
+                logger.info(
+                    "Profile loaded successfully, waiting for user to trigger analysis"
+                )
+                st.success(
+                    "Profile loaded successfully! Click 'Analyze Profile' below to start the analysis."
+                )
+
+        # Add explicit button to trigger analysis for loaded profile
+        if (
+            st.session_state.profile_loaded_from_json
+            and not st.session_state.conversation_completed
+        ):
+            if st.button("🔍 Analyze Profile", use_container_width=True, type="primary"):
+                logger.info("User triggered profile analysis")
                 st.session_state.conversation_completed = True
                 st.session_state.generated_portfolio = None
-                st.session_state.profile_loaded_from_json = True
-                logger.info(
-                    "Profile loaded successfully, auto-generation will happen in display section"
-                )
-                st.success("Profile loaded successfully!")
                 st.rerun()
 
         # Model info
@@ -1034,7 +1064,10 @@ def _extract_financial_metrics(
     try:
         if profile is None:
             logger.warning("Profile is None, returning defaults")
-            return 5000, 200
+            return (
+                MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+                MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+            )
 
         # Convert profile to dict for agent
         profile_dict = (
@@ -1058,9 +1091,14 @@ def _extract_financial_metrics(
     except Exception as e:
         logger.error("Error extracting PAC metrics: %s", str(e))
         logger.warning(
-            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €5000, Monthly €200"
+            "PAC METRICS EXTRACTION FAILED - Returning defaults: Initial €%d, Monthly €%d",
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
         )
-        return 5000, 200  # Return defaults
+        return (
+            MONTECARLO_DEFAULT_INITIAL_INVESTMENT,
+            MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION,
+        )
 
 
 def _display_wealth_simulation(
@@ -1084,11 +1122,11 @@ def _display_wealth_simulation(
 
     # Display explanation of Long-Term Wealth Projection
     st.markdown(
-        """
+        f"""
     **📊 Cos'è questa simulazione?**
 
-    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta 1.000 scenari di crescita del portafoglio
-    su 20 anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
+    La simulazione utilizza il **Monte Carlo**, un metodo statistico che proietta {MONTECARLO_SIMULATION_SCENARIOS} scenari di crescita del portafoglio
+    su {MONTECARLO_SIMULATION_YEARS} anni, considerando volatilità storica e rendimenti medi. I tre scenari mostrati rappresentano:
     - **Pessimistico (10° percentile)**: Solo 1 scenario su 10 avrà risultati peggiori
     - **Atteso (50° percentile)**: Il valore più probabile (mediana)
     - **Ottimistico (75° percentile)**: 3 scenari su 4 rimangono sotto questo valore
@@ -1153,9 +1191,11 @@ def _display_wealth_simulation(
                         * (
                             next(
                                 (
-                                    a.get("percentage")
-                                    if isinstance(a, dict)
-                                    else a.percentage
+                                    (
+                                        a.get("percentage")
+                                        if isinstance(a, dict)
+                                        else a.percentage
+                                    )
                                     for a in portfolio["assets"]
                                     if (
                                         a.get("symbol")
@@ -1180,9 +1220,11 @@ def _display_wealth_simulation(
                                 * (
                                     next(
                                         (
-                                            a.get("percentage")
-                                            if isinstance(a, dict)
-                                            else a.percentage
+                                            (
+                                                a.get("percentage")
+                                                if isinstance(a, dict)
+                                                else a.percentage
+                                            )
                                             for a in portfolio["assets"]
                                             if (
                                                 a.get("symbol")
@@ -1227,8 +1269,8 @@ def _display_wealth_simulation(
                         monthly_contribution,
                     )
                 else:
-                    initial_investment = 5000
-                    monthly_contribution = 200
+                    initial_investment = MONTECARLO_DEFAULT_INITIAL_INVESTMENT
+                    monthly_contribution = MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION
                     logger.warning(
                         "PAC SECTION - Profile is NONE, using default PAC parameters: Initial €%d, Monthly €%d",
                         initial_investment,
@@ -1306,7 +1348,7 @@ def _display_wealth_simulation(
                 )
 
                 fig_lump.update_layout(
-                    title="Lump Sum Investment - 20-Year Wealth Projection",
+                    title=f"Lump Sum Investment - {MONTECARLO_SIMULATION_YEARS}-Year Wealth Projection",
                     xaxis_title="Years",
                     yaxis_title="Portfolio Value (€)",
                     hovermode="x unified",
@@ -1601,12 +1643,16 @@ def _display_portfolio_details(portfolio, financial_advisor_agent):
         for asset in portfolio["assets"]:
             display_asset(
                 asset.get("symbol") if isinstance(asset, dict) else asset.symbol,
-                asset.get("percentage")
-                if isinstance(asset, dict)
-                else asset.percentage,
-                asset.get("justification")
-                if isinstance(asset, dict)
-                else asset.justification,
+                (
+                    asset.get("percentage")
+                    if isinstance(asset, dict)
+                    else asset.percentage
+                ),
+                (
+                    asset.get("justification")
+                    if isinstance(asset, dict)
+                    else asset.justification
+                ),
             )
 
     # Display portfolio pie chart
@@ -1668,6 +1714,39 @@ def main():
 
     # Initialize session state
     _initialize_session_state()
+
+    # Check if any providers are available
+    available_providers = get_available_providers()
+    logger.debug("Available providers on startup: %s", available_providers)
+
+    # Show API key configuration on first load only if NO providers are available
+    if not st.session_state.skip_initial_settings and not available_providers:
+        logger.debug(
+            "First load with no available providers - showing API key configuration page"
+        )
+        _show_header()
+        st.subheader("🔑 Configure Your API Keys")
+        st.markdown(
+            "Welcome! No LLM providers are currently configured. Let's set up your API keys and LLM provider settings before we get started."
+        )
+        show_settings_page()
+
+        # Add button to proceed to provider selection
+        if st.button("✅ Continue to Provider Selection", use_container_width=True):
+            logger.info("User proceeding to provider selection after configuration")
+            st.session_state.skip_initial_settings = True
+            st.rerun()
+        return
+
+    # Mark initial settings as skipped if we reach here (at least one provider is available)
+    if not st.session_state.skip_initial_settings and available_providers:
+        logger.debug("Skipping initial settings - at least one provider is available")
+        st.session_state.skip_initial_settings = True
+
+    # Show settings page if requested from sidebar
+    if st.session_state.get("show_settings", False):
+        show_settings_page()
+        return
 
     # Provider selection modal on first load
     if st.session_state.provider is None:

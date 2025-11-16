@@ -1,10 +1,8 @@
 """
-Retrieval Package.
-
-This package contains RAG (Retrieval Augmented Generation) components
-for retrieving relevant asset information.
+Pacchetto Retrieval.
+Espone il servizio RAG basato su LangChain come unico punto di accesso
+per la ricerca documentale.
 """
+from .rag_service import RAGService
 
-from .asset_retriever import RAGAssetRetriever
-
-__all__ = ["RAGAssetRetriever"]
+__all__ = ["RAGService"]

@@ -1,29 +1,30 @@
 """
 Financial Advisor Agent Module.
-
-Agent specialized for portfolio analysis and generation using RAG.
+Versione modificata per utilizzare il nuovo RAGService basato su LangChain
+in modo trasparente, mantenendo la stessa interfaccia esterna.
 """
-
 import json
 import logging
-from typing import Optional
+from typing import List, Optional
 
+from datapizza.agents import Agent
+from datapizza.memory import Memory
+
+from ..clients import get_client
 from ..models import FinancialProfile, PACMetrics, Portfolio
-from ..retrieval import RAGAssetRetriever
+from ..retrieval.rag_service import RAGService
 from ..tools import analyze_financial_asset
 from .base_agent import BaseAgent
+
+######################## TODO: traduci commenti dall'italiano all'inglese #################
 
 logger = logging.getLogger(__name__)
 
 
 class FinancialAdvisorAgent(BaseAgent):
     """
-    Financial Advisor Agent for portfolio generation and analysis.
-
-    Specializes in:
-    - RAG-augmented financial advice
-    - Portfolio generation based on financial profiles
-    - Financial profile extraction from conversations
+    Agente specializzato nella generazione di portafogli.
+    Ora utilizza internamente il RAGService potenziato.
     """
 
     def __init__(
@@ -36,30 +37,17 @@ class FinancialAdvisorAgent(BaseAgent):
         planning_interval: Optional[int] = None,
         max_steps: Optional[int] = None,
     ):
-        """
-        Initialize the FinancialAdvisorAgent.
-
-        Args:
-            name: Agent name
-            system_prompt: System prompt for the agent
-            provider: LLM provider ('ollama', 'google', 'openai')
-            api_url: API URL (for Ollama)
-            model: Model name to use
-            planning_interval: Planning interval (default: 1)
-            max_steps: Maximum steps (default: 1)
-        """
-        # Call parent init
-        super().__init__(
-            name=name,
-            system_prompt=system_prompt,
-            provider=provider,
-            api_url=api_url,
-            model=model,
-            planning_interval=planning_interval,
-            max_steps=max_steps,
+        # --- INIZIALIZZAZIONE ESPLICITA ---
+        # Invece di chiamare super() per primo, impostiamo gli attributi di base qui.
+        self.name = name or self.__class__.__name__
+        self.provider = provider
+        self.system_prompt = system_prompt or self._get_default_system_prompt()
+        self.planning_interval = (
+            planning_interval or self._get_default_planning_interval()
         )
+        self.max_steps = max_steps or self._get_default_max_steps()
 
-        # Load prompt templates specific to financial advisor
+        # Carica i prompt specifici
         self.rag_query_builder_prompt = self._load_prompt_template("rag_query_builder")
         self.portfolio_extraction_prompt = self._load_prompt_template(
             "portfolio_extraction"
@@ -71,129 +59,145 @@ class FinancialAdvisorAgent(BaseAgent):
             "pac_metrics_extraction"
         )
 
-        # Initialize RAG retriever for asset data
-        logger.debug("Initializing RAG asset retriever")
-        self._rag_retriever = self._initialize_rag_retriever()
+        # Crea il client
+        self._client = get_client(provider=provider)
 
-    def _get_default_system_prompt(self) -> str:
-        """
-        Get financial advisor system prompt.
+        # Crea la memoria
+        self.memory = Memory()
 
-        Returns:
-            System prompt text
-        """
-        return self._load_system_prompt()
+        # Definisci i tools
+        financial_tools = [analyze_financial_asset]
+
+        # Crea l'agente datapizza con tutti i pezzi
+        self.agent = Agent(
+            name=self.name,
+            client=self._client,
+            memory=self.memory,
+            system_prompt=self.system_prompt,
+            tools=financial_tools,
+            planning_interval=self.planning_interval,
+            max_steps=self.max_steps,
+        )
+
+        # Inizializza il RAG service interno
+        try:
+            self._rag_service = RAGService()
+        except Exception as e:
+            logger.error(
+                f"FALLIMENTO CRITICO: Impossibile inizializzare il RAGService interno: {e}",
+                exc_info=True,
+            )
+            self._rag_service = None
 
     def _get_default_tools(self) -> list:
-        """
-        Financial advisor has NO tools.
-
-        Returns:
-            Empty list - no tools for Financial advisor
-        """
-        logger.debug("Financial advisor initialized with no tools")
+        # return [analyze_financial_asset]
         return []
 
     def _get_default_planning_interval(self) -> int:
-        """
-        Get default planning interval for FinancialAdvisorAgent.
-
-        Returns:
-            Planning interval: 1
-        """
         return 1
 
     def _get_default_max_steps(self) -> int:
-        """
-        Get default max steps for FinancialAdvisorAgent.
-
-        Returns:
-            Max steps: 3
-        """
         return 3
 
-    def _initialize_rag_retriever(self) -> Optional[RAGAssetRetriever]:
+    def _get_default_system_prompt(self) -> str:
+        return self._load_system_prompt()
+
+    # =============== TODO: controlla funzione + traduci in inglese ===============#
+    def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
         """
-        Initialize the RAG retriever for asset data.
-
-        Returns:
-            RAGAssetRetriever instance or None if initialization fails
+        Genera un portafoglio d'investimento bilanciato basato sul profilo finanziario.
         """
-        try:
-            rag_retriever = RAGAssetRetriever()
-            rag_retriever.build_or_load_index()
-            logger.info("RAG asset retriever initialized successfully")
-            return rag_retriever
-        except Exception as e:
-            logger.warning("Failed to initialize RAG retriever: %s", str(e))
-            return None
+        if not financial_profile:
+            logger.error("Il profilo finanziario non può essere None o vuoto")
+            raise ValueError("Il profilo finanziario non può essere None o vuoto")
 
-    # ==================== Financial Profile ====================
-
-    def extract_financial_profile(self, conversation_summary: str) -> FinancialProfile:
-        """
-        Extract structured financial profile from conversation summary.
-
-        Uses datapizza's structured_response to extract financial information
-        from the conversation summary into a structured FinancialProfile object.
-
-        Args:
-            conversation_summary: The conversation summary text to process
-
-        Returns:
-            FinancialProfile object with extracted financial information
-
-        Raises:
-            Exception: If the extraction fails
-        """
-        logger.debug("Extracting financial profile from summary")
+        logger.info(">>> FASE 1: Inizio generazione portafoglio con contesto RAG")
 
         try:
-            extraction_prompt = self.financial_profile_extraction_prompt.format(
-                conversation_summary=conversation_summary
-            )
+            profile_json = json.dumps(financial_profile, indent=2)
+            logger.debug("--- PROFILO UTENTE (JSON) ---\n%s", profile_json)
 
-            logger.debug(
-                "Calling structured_response with FinancialProfile model with prompt: %s",
-                extraction_prompt,
-            )
+            asset_context = ""
+            if self._rag_service:
+                logger.info(">>> FASE 2: Interrogazione del RAG Service")
 
-            try:
-                response = self._client.structured_response(
-                    input=extraction_prompt,
-                    output_cls=FinancialProfile,
-                    memory=self._memory,
+                query = self.rag_query_builder_prompt.format(
+                    financial_profile=profile_json,
                 )
 
-                logger.debug("Structured response received")
-                logger.debug("Response structured data: %s", response.structured_data)
+                logger.debug("--- QUERY GENERATA PER IL RAG ---\n%s", query)
 
-                if hasattr(response, "structured_data") and response.structured_data:
-                    profile = response.structured_data[0]
-                    logger.info("Financial profile extracted successfully")
-                    logger.debug("Extracted profile data: %s", profile)
-                    return profile
-                else:
-                    logger.error("No structured data in response")
-                    raise ValueError("No structured data returned from extraction")
-            except ValueError as ve:
-                if "extra_forbidden" in str(
-                    ve
-                ) or "Extra inputs are not permitted" in str(ve):
-                    logger.error(
-                        "LLM generated extra fields that could not be filtered: %s",
-                        str(ve),
+                try:
+                    retrieved_assets = self._rag_service.retrieve_context(query, k=15)
+
+                    logger.debug(
+                        "--- DOCUMENTI RECUPERATI DAL RAG (%d) ---",
+                        len(retrieved_assets),
                     )
-                    logger.warning("Returning default FinancialProfile")
-                    return FinancialProfile()
-                else:
-                    raise
+                    for i, asset in enumerate(
+                        retrieved_assets[:3]
+                    ):  # Stampa solo i primi 3 per brevità
+                        logger.debug(
+                            f"  > DOC {i+1} | ID: {asset.get('id')} | Score: {asset.get('score'):.4f}\n    Text: {asset.get('text', '')[:100]}..."
+                        )
+
+                    asset_texts = []
+                    for asset in retrieved_assets:
+                        asset_texts.append(
+                            f"[Asset: {asset.get('id')} (relevance: {asset.get('score', 0):.2f})]\n{asset.get('text', '')[:300]}..."
+                        )
+                    asset_context = "\n---\n".join(asset_texts)
+                    logger.info(
+                        "Contesto RAG preparato, lunghezza: %d caratteri",
+                        len(asset_context),
+                    )
+
+                except Exception as e:
+                    logger.warning("Recupero RAG fallito: %s", str(e))
+            else:
+                logger.warning(
+                    "RAG retriever non disponibile, procederò senza contesto aggiuntivo."
+                )
+
+            extraction_prompt = self.portfolio_extraction_prompt.format(
+                client_profile=profile_json, asset_context=asset_context
+            )
+
+            logger.info(
+                ">>> FASE 3: Invio richiesta all'LLM per la generazione del portafoglio"
+            )
+            logger.debug(
+                "--- PROMPT FINALE PER L'LLM (primi 500 caratteri) ---\n%s...",
+                extraction_prompt[:500],
+            )
+
+            response = self._client.structured_response(
+                input=extraction_prompt,
+                output_cls=Portfolio,
+            )
+
+            if hasattr(response, "structured_data") and response.structured_data:
+                portfolio = response.structured_data[0]
+                logger.info(">>> FASE 4: Portafoglio generato con successo!")
+                logger.info(
+                    "Livello di rischio del portafoglio: %s", portfolio.risk_level
+                )
+                return portfolio.model_dump(mode="json")
+            else:
+                logger.error(
+                    "Generazione portafoglio fallita: nessun dato strutturato ricevuto dall'LLM."
+                )
+                raise ValueError(
+                    "Nessun dato strutturato ricevuto per la generazione del portafoglio"
+                )
 
         except Exception as e:
             logger.error(
-                "Failed to extract financial profile: %s", str(e), exc_info=True
+                "FALLIMENTO CRITICO in generate_balanced_portfolio: %s",
+                str(e),
+                exc_info=True,
             )
-            raise RuntimeError(f"Failed to extract financial profile: {e}") from e
+            raise RuntimeError(f"Impossibile generare il portafoglio: {e}") from e
 
     # ==================== PAC Metrics Extraction ====================
 
@@ -250,98 +254,6 @@ class FinancialAdvisorAgent(BaseAgent):
             logger.error("Failed to extract PAC metrics: %s", str(e), exc_info=True)
             logger.warning("Returning default PAC metrics due to extraction failure")
             return PACMetrics()
-
-    def generate_balanced_portfolio(self, financial_profile: dict) -> dict:
-        """
-        Generate a balanced investment portfolio based on the financial profile.
-
-        Uses RAG to retrieve relevant asset information from ETF PDFs, then generates
-        a customized portfolio allocation using the LLM with both the financial profile
-        and asset data as context.
-
-        Args:
-            financial_profile: Dictionary with financial profile information
-
-        Returns:
-            dict: Portfolio recommendation as dictionary with structured data
-
-        Raises:
-            ValueError: If financial_profile is None or empty
-            RuntimeError: If LLM fails or RAG retriever unavailable
-        """
-        if not financial_profile:
-            logger.error("Financial profile cannot be None or empty")
-            raise ValueError("Financial profile cannot be None or empty")
-
-        logger.info("Generating balanced portfolio with RAG context")
-        logger.debug("Profile keys: %s", list(financial_profile.keys()))
-
-        try:
-            profile_json = json.dumps(financial_profile, indent=2)
-
-            asset_context = ""
-            if self._rag_retriever:
-                logger.debug("Retrieving asset information via RAG")
-
-                query = self.rag_query_builder_prompt.format(
-                    financial_profile=profile_json,
-                )
-
-                logger.debug("RAG query: %s", query)
-
-                try:
-                    retrieved_assets = self._rag_retriever.retrieve(query, k=15)
-                    logger.info("Retrieved %d asset documents", len(retrieved_assets))
-
-                    asset_texts = []
-                    for asset in retrieved_assets:
-                        asset_texts.append(
-                            f"[Asset: {asset['id']} (relevance: {asset['score']:.2f})]\n{asset['text'][:300]}..."
-                        )
-                    asset_context = "\n---\n".join(asset_texts)
-                    logger.debug(
-                        "Asset context prepared, length: %d", len(asset_context)
-                    )
-                except Exception as e:
-                    logger.warning("RAG retrieval failed: %s", str(e))
-            else:
-                logger.warning("RAG retriever not available")
-
-            extraction_prompt = self.portfolio_extraction_prompt.format(
-                client_profile=profile_json, asset_context=asset_context
-            )
-
-            logger.debug("Sending structured portfolio generation request to LLM")
-            logger.debug("Prompt length: %d characters", len(extraction_prompt))
-
-            response = self._client.structured_response(
-                input=extraction_prompt,
-                output_cls=Portfolio,
-            )
-
-            logger.debug("Structured response received")
-
-            if hasattr(response, "structured_data") and response.structured_data:
-                portfolio = response.structured_data[0]
-                logger.info("Portfolio generated successfully with RAG context")
-                logger.info("Risk level: %s", portfolio.risk_level)
-
-                portfolio_dict = portfolio.model_dump(mode="json")
-                logger.debug(
-                    "Returning portfolio dictionary with keys: %s",
-                    list(portfolio_dict.keys()),
-                )
-
-                return portfolio_dict
-            else:
-                logger.error("No structured data in response")
-                raise ValueError(
-                    "No structured data returned from portfolio generation"
-                )
-
-        except Exception as e:
-            logger.error("Failed to generate portfolio: %s", str(e), exc_info=True)
-            raise RuntimeError(f"Failed to generate portfolio: {e}") from e
 
     def analyze_asset(self, ticker: str, years: int = 10) -> dict:
         """

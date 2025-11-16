@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from ..models import FinancialProfile  # <-- NUOVO
 from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,10 @@ class ChatbotAgent(BaseAgent):
         # Initialize question tracking - specific to ChatbotAgent
         self.current_question_index = 0
         logger.debug("Question index initialized to 0")
+
+        self.financial_profile_extraction_prompt = self._load_prompt_template(
+            "financial_profile_extraction"
+        )
 
         # Call parent init
         super().__init__(
@@ -235,6 +240,45 @@ class ChatbotAgent(BaseAgent):
         logger.debug("Resetting question index")
         self.current_question_index = 0
         logger.info("Question index reset to 0")
+
+
+# ==================== Portfolio Extraction ====================
+
+
+def extract_financial_profile(self) -> Optional[FinancialProfile]:
+    """
+    Analizza la memoria della conversazione corrente e estrae un
+    oggetto FinancialProfile strutturato.
+    """
+    logger.info("ChatbotAgent sta tentando di estrarre il profilo finanziario...")
+
+    # Prende l'intera conversazione dalla sua memoria
+    conversation_summary = self.memory.get_full_conversation()
+
+    if not conversation_summary:
+        logger.warning("La memoria della conversazione è vuota. Estrazione annullata.")
+        return None
+
+    # Formatta il prompt di estrazione con la conversazione
+    extraction_prompt = self.financial_profile_extraction_prompt.format(
+        conversation_summary=conversation_summary
+    )
+
+    # Chiama l'LLM chiedendo una risposta strutturata
+    response = self._client.structured_response(
+        input=extraction_prompt, output_cls=FinancialProfile
+    )
+
+    # Controlla e restituisce i dati strutturati
+    if hasattr(response, "structured_data") and response.structured_data:
+        profile = response.structured_data[0]
+        logger.info("Profilo estratto con successo dal ChatbotAgent.")
+        return profile
+
+    logger.error(
+        "Estrazione del profilo fallita: nessun dato strutturato ricevuto dall'LLM."
+    )
+    return None
 
     # ==================== Conversation Utilities ====================
 
