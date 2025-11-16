@@ -1,0 +1,26 @@
+name: 'Telegram message'
+on: [push]
+
+jobs:
+  send-telegram-message:
+    name: Telegram message
+    runs-on: ubuntu-latest
+    steps:
+      - name: Telegram message
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          disable_web_page_preview: true
+          message: |
+            *New Push* 📤
+
+            *Author:* [@${{ github.actor }}](https://github.com/${{ github.actor }})
+            *Repository:* [${{ github.repository }}](https://github.com/${{ github.repository }})
+            *Branch:* [${{ github.ref_name }}](https://github.com/${{ github.repository }}/tree/${{ github.ref_name }})
+
+            *Commit Message:*
+            `${{ github.event.head_commit.message }}`
+
+            [View Changes](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
