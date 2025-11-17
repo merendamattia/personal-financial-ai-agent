@@ -16,6 +16,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 from src.clients import list_providers
@@ -289,6 +290,53 @@ def initialize_financial_advisor(
             exc_info=True,
         )
         raise
+
+
+# AGGIUNTA: nuova funzione per smooth scroll della pagina
+def _scroll_to_bottom():
+    """
+    Injects JavaScript to force scroll to bottom repeatedly.
+    Essential to handle dynamic content loading (like Plotly charts)
+    and UI layout changes (like chat_input removal).
+    """
+    js = """
+    <script>
+        function scrollDown() {
+            // Cerca il contenitore principale di Streamlit
+            var body = window.parent.document.body;
+            var main = window.parent.document.querySelector('.main');
+
+            // Calcola l'altezza massima scrollabile
+            var height = Math.max(
+                body.scrollHeight,
+                body.offsetHeight,
+                body.getBoundingClientRect().height,
+                main ? main.scrollHeight : 0
+            );
+
+            // Esegui lo scroll
+            window.parent.window.scrollTo({
+                top: height,
+                behavior: 'smooth'
+            });
+        }
+
+        // Logica "Insistente": continua a scrollare mentre la pagina si assesta
+        var attempts = 0;
+        function keepScrolling() {
+            scrollDown();
+            attempts++;
+            // Continua a provare per circa 3 secondi (15 tentativi * 200ms)
+            if (attempts < 15) {
+                setTimeout(keepScrolling, 200);
+            }
+        }
+
+        // Avvia il ciclo
+        keepScrolling();
+    </script>
+    """
+    components.html(js, height=0, width=0)
 
 
 def stream_text(text: str, chunk_size: int = 20):
@@ -1833,6 +1881,9 @@ def main():
                 duration="long",
             )
 
+        # --- Aggiunta: Scrolla giù all'inizio della generazione ---
+        _scroll_to_bottom()  # <--- Chiama qui per evitare il salto iniziale
+
         logger.debug("Conversation is completed")
 
         # Generate and display portfolio
@@ -1900,6 +1951,8 @@ def main():
                     "Your financial profile and PAC metrics have been extracted and analyzed."
                 )
 
+                _scroll_to_bottom()
+
                 # Financial Profile in an expanded section
                 with st.expander(
                     "📊 View Your Financial Profile & Summary", expanded=False
@@ -1911,6 +1964,9 @@ def main():
                         "- Consider consulting with a financial advisor for personalized advice\n"
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
+
+                # --- Aggiunta: Scrolla giù alla fine per mostrare tutto ---
+                _scroll_to_bottom()  # <--- Chiama qui per assicurarti di vedere la fine
 
         else:
             logger.debug("No financial profile available to display")
