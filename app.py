@@ -292,7 +292,8 @@ def initialize_financial_advisor(
         raise
 
 
-# AGGIUNTA: nuova funzione per smooth scroll della pagina
+# TODO: vedere se eliminare
+# Funzione per smooth scroll della pagina
 def _scroll_to_bottom():
     """
     Force scroll to bottom by targeting the specific Streamlit main container.
@@ -1855,6 +1856,14 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # --- INPUT SEMPRE PRESENTE ---
+    # Manteniamo la chat input renderizzata ma disabilitata se la conversazione è finita.
+    # Questo impedisce al browser di perdere il focus e "saltare" in alto.
+    prompt = st.chat_input(
+        "Assessment completato. Vedi i risultati qui sopra.",
+        disabled=st.session_state.conversation_completed,
+    )
+
     # Show message if conversation is completed
     if st.session_state.conversation_completed:
         if not st.session_state.generated_portfolio:
@@ -1864,8 +1873,8 @@ def main():
                 duration="long",
             )
 
-        # --- Aggiunta: Scrolla giù all'inizio della generazione ---
-        _scroll_to_bottom()  # <--- Chiama qui per evitare il salto iniziale
+        # TODO: vedere se elimanrla
+        _scroll_to_bottom()
 
         logger.debug("Conversation is completed")
 
@@ -1934,6 +1943,7 @@ def main():
                     "Your financial profile and PAC metrics have been extracted and analyzed."
                 )
 
+                # TODO: vedere se eliminare
                 _scroll_to_bottom()
 
                 # Financial Profile in an expanded section
@@ -1948,14 +1958,14 @@ def main():
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
 
-                # --- Aggiunta: Scrolla giù alla fine per mostrare tutto ---
-                _scroll_to_bottom()  # <--- Chiama qui per assicurarti di vedere la fine
+                # TODO: vedere se eliminare
+                _scroll_to_bottom()
 
         else:
             logger.debug("No financial profile available to display")
     else:
-        # User input - only show if conversation is not completed
-        if prompt := st.chat_input("Ask me about your finances..."):
+        # Gestiamo l'input dell'utente SOLO se c'è un prompt (quindi non è disabilitato)
+        if prompt:
             logger.debug("User input received: %s", prompt[:100])
 
             # Display user message
