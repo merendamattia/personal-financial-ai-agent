@@ -295,45 +295,28 @@ def initialize_financial_advisor(
 # AGGIUNTA: nuova funzione per smooth scroll della pagina
 def _scroll_to_bottom():
     """
-    Injects JavaScript to force scroll to bottom repeatedly.
-    Essential to handle dynamic content loading (like Plotly charts)
-    and UI layout changes (like chat_input removal).
+    Force scroll to bottom by targeting the specific Streamlit main container.
     """
     js = """
     <script>
-        function scrollDown() {
-            // Cerca il contenitore principale di Streamlit
-            var body = window.parent.document.body;
-            var main = window.parent.document.querySelector('.main');
+        function forceScroll() {
+            // Cerca il contenitore scrollabile principale di Streamlit
+            // I selettori coprono varie versioni di Streamlit
+            var scrollable_div = window.parent.document.querySelector('section.main') ||
+                                 window.parent.document.querySelector('.main') ||
+                                 window.parent.document.querySelector('[data-testid="stMain"]');
 
-            // Calcola l'altezza massima scrollabile
-            var height = Math.max(
-                body.scrollHeight,
-                body.offsetHeight,
-                body.getBoundingClientRect().height,
-                main ? main.scrollHeight : 0
-            );
-
-            // Esegui lo scroll
-            window.parent.window.scrollTo({
-                top: height,
-                behavior: 'smooth'
-            });
-        }
-
-        // Logica "Insistente": continua a scrollare mentre la pagina si assesta
-        var attempts = 0;
-        function keepScrolling() {
-            scrollDown();
-            attempts++;
-            // Continua a provare per circa 3 secondi (15 tentativi * 200ms)
-            if (attempts < 15) {
-                setTimeout(keepScrolling, 200);
+            if (scrollable_div) {
+                // Forza lo scroll alla fine dell'altezza totale del contenuto
+                scrollable_div.scrollTop = scrollable_div.scrollHeight;
             }
         }
 
-        // Avvia il ciclo
-        keepScrolling();
+        // Esegui più volte per "vincere" contro il rendering dinamico di Plotly e i Toast
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 500);
+        setTimeout(forceScroll, 1000);
+        setTimeout(forceScroll, 2000); // Un ultimo tentativo dopo 2 secondi per sicurezza
     </script>
     """
     components.html(js, height=0, width=0)
