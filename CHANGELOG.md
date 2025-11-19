@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.5.0...v1.6.0) (2025-11-19)
+
+
+### Features
+
+* add GitHub Actions workflow for sending Telegram messages on push ([fc47ec2](https://github.com/merendamattia/personal-financial-ai-agent/commit/fc47ec21ffd4dacc6f53940fbc2ebb9a7da51066))
+
 # [1.5.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.4.0...v1.5.0) (2025-11-05)
 
 
