@@ -1851,7 +1851,7 @@ def main():
             st.markdown(message["content"])
 
     prompt = st.chat_input(
-        "Assessment completato. Vedi i risultati qui sopra.",
+        "Assessment completed. See the results above.",
         disabled=st.session_state.conversation_completed,
     )
 
@@ -1948,7 +1948,7 @@ def main():
         else:
             logger.debug("No financial profile available to display")
     else:
-        # Gestiamo l'input dell'utente SOLO se c'è un prompt (quindi non è disabilitato)
+        # Handle user input ONLY if there is a prompt (i.e., not disabled)
         if prompt:
             logger.debug("User input received: %s", prompt[:100])
 
