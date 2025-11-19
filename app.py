@@ -16,6 +16,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 from src.clients import list_providers
@@ -289,6 +290,31 @@ def initialize_financial_advisor(
             exc_info=True,
         )
         raise
+
+
+def _scroll_to_bottom():
+    """
+    Force scroll to bottom by targeting the specific Streamlit main container.
+    """
+    js = """
+    <script>
+        function forceScroll() {
+            var scrollable_div = window.parent.document.querySelector('section.main') ||
+                                 window.parent.document.querySelector('.main') ||
+                                 window.parent.document.querySelector('[data-testid="stMain"]');
+
+            if (scrollable_div) {
+                scrollable_div.scrollTop = scrollable_div.scrollHeight;
+            }
+        }
+
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 500);
+        setTimeout(forceScroll, 1000);
+        setTimeout(forceScroll, 2000);
+    </script>
+    """
+    components.html(js, height=0, width=0)
 
 
 def stream_text(text: str, chunk_size: int = 20):
@@ -1824,6 +1850,11 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    prompt = st.chat_input(
+        "Assessment completed. See the results above.",
+        disabled=st.session_state.conversation_completed,
+    )
+
     # Show message if conversation is completed
     if st.session_state.conversation_completed:
         if not st.session_state.generated_portfolio:
@@ -1912,11 +1943,13 @@ def main():
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
 
+                _scroll_to_bottom()
+
         else:
             logger.debug("No financial profile available to display")
     else:
-        # User input - only show if conversation is not completed
-        if prompt := st.chat_input("Ask me about your finances..."):
+        # Handle user input ONLY if there is a prompt (i.e., not disabled)
+        if prompt:
             logger.debug("User input received: %s", prompt[:100])
 
             # Display user message
