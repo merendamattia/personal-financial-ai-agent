@@ -292,8 +292,6 @@ def initialize_financial_advisor(
         raise
 
 
-# TODO: vedere se eliminare
-# Funzione per smooth scroll della pagina
 def _scroll_to_bottom():
     """
     Force scroll to bottom by targeting the specific Streamlit main container.
@@ -301,23 +299,19 @@ def _scroll_to_bottom():
     js = """
     <script>
         function forceScroll() {
-            // Cerca il contenitore scrollabile principale di Streamlit
-            // I selettori coprono varie versioni di Streamlit
             var scrollable_div = window.parent.document.querySelector('section.main') ||
                                  window.parent.document.querySelector('.main') ||
                                  window.parent.document.querySelector('[data-testid="stMain"]');
 
             if (scrollable_div) {
-                // Forza lo scroll alla fine dell'altezza totale del contenuto
                 scrollable_div.scrollTop = scrollable_div.scrollHeight;
             }
         }
 
-        // Esegui più volte per "vincere" contro il rendering dinamico di Plotly e i Toast
         setTimeout(forceScroll, 100);
         setTimeout(forceScroll, 500);
         setTimeout(forceScroll, 1000);
-        setTimeout(forceScroll, 2000); // Un ultimo tentativo dopo 2 secondi per sicurezza
+        setTimeout(forceScroll, 2000);
     </script>
     """
     components.html(js, height=0, width=0)
@@ -1856,9 +1850,6 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- INPUT SEMPRE PRESENTE ---
-    # Manteniamo la chat input renderizzata ma disabilitata se la conversazione è finita.
-    # Questo impedisce al browser di perdere il focus e "saltare" in alto.
     prompt = st.chat_input(
         "Assessment completato. Vedi i risultati qui sopra.",
         disabled=st.session_state.conversation_completed,
