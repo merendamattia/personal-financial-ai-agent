@@ -1,3 +1,11 @@
+## [1.6.1](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.6.0...v1.6.1) (2025-11-19)
+
+
+### Bug Fixes
+
+* clean up scroll_to_bottom function and remove unnecessary comments in app.py ([#21](https://github.com/merendamattia/personal-financial-ai-agent/issues/21)) ([8af5438](https://github.com/merendamattia/personal-financial-ai-agent/commit/8af54389dc4d60789093201181f3d0c742a17cbf))
+* update Italian text to English in main function prompts and comments ([1d30e36](https://github.com/merendamattia/personal-financial-ai-agent/commit/1d30e36f17d4a7c8bd91b18b1b67f82cd972ac70))
+
 # [1.6.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.5.0...v1.6.0) (2025-11-19)
 
 
