@@ -1864,9 +1864,6 @@ def main():
                 duration="long",
             )
 
-        # TODO: vedere se elimanrla
-        _scroll_to_bottom()
-
         logger.debug("Conversation is completed")
 
         # Generate and display portfolio
@@ -1934,9 +1931,6 @@ def main():
                     "Your financial profile and PAC metrics have been extracted and analyzed."
                 )
 
-                # TODO: vedere se eliminare
-                _scroll_to_bottom()
-
                 # Financial Profile in an expanded section
                 with st.expander(
                     "📊 View Your Financial Profile & Summary", expanded=False
@@ -1949,7 +1943,6 @@ def main():
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
 
-                # TODO: vedere se eliminare
                 _scroll_to_bottom()
 
         else:
