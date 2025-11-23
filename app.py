@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from src.clients import list_providers
 from src.core import ChatbotAgent, FinancialAdvisorAgent
 from src.models import FinancialProfile, Portfolio
+from src.ui.pdf_generator import PDFGenerator  # <-- NUOVO IMPORT
 from src.ui.settings_page import show_settings_page
 
 MONTECARLO_MIN_ASSET_VOLATILITY = float(
@@ -292,6 +293,8 @@ def initialize_financial_advisor(
         raise
 
 
+# TODO: vedere se eliminare
+# Funzione per smooth scroll della pagina
 def _scroll_to_bottom():
     """
     Force scroll to bottom by targeting the specific Streamlit main container.
@@ -299,19 +302,23 @@ def _scroll_to_bottom():
     js = """
     <script>
         function forceScroll() {
+            // Cerca il contenitore scrollabile principale di Streamlit
+            // I selettori coprono varie versioni di Streamlit
             var scrollable_div = window.parent.document.querySelector('section.main') ||
                                  window.parent.document.querySelector('.main') ||
                                  window.parent.document.querySelector('[data-testid="stMain"]');
 
             if (scrollable_div) {
+                // Forza lo scroll alla fine dell'altezza totale del contenuto
                 scrollable_div.scrollTop = scrollable_div.scrollHeight;
             }
         }
 
+        // Esegui più volte per "vincere" contro il rendering dinamico di Plotly e i Toast
         setTimeout(forceScroll, 100);
         setTimeout(forceScroll, 500);
         setTimeout(forceScroll, 1000);
-        setTimeout(forceScroll, 2000);
+        setTimeout(forceScroll, 2000); // Un ultimo tentativo dopo 2 secondi per sicurezza
     </script>
     """
     components.html(js, height=0, width=0)
@@ -1850,8 +1857,11 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # --- INPUT SEMPRE PRESENTE ---
+    # Manteniamo la chat input renderizzata ma disabilitata se la conversazione è finita.
+    # Questo impedisce al browser di perdere il focus e "saltare" in alto.
     prompt = st.chat_input(
-        "Assessment completed. See the results above.",
+        "Ask me about your finances...",
         disabled=st.session_state.conversation_completed,
     )
 
@@ -1863,6 +1873,9 @@ def main():
                 icon="🔄",
                 duration="long",
             )
+
+        # TODO: vedere se elimanrla
+        _scroll_to_bottom()
 
         logger.debug("Conversation is completed")
 
@@ -1931,6 +1944,9 @@ def main():
                     "Your financial profile and PAC metrics have been extracted and analyzed."
                 )
 
+                # TODO: vedere se eliminare
+                _scroll_to_bottom()
+
                 # Financial Profile in an expanded section
                 with st.expander(
                     "📊 View Your Financial Profile & Summary", expanded=False
@@ -1943,12 +1959,44 @@ def main():
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
 
+                # --- AGGIUNGO QUI IL PULSANTE DI ESPORTAZIONE PDF ---
+
+                if (
+                    st.session_state.financial_profile
+                    and st.session_state.generated_portfolio
+                ):
+                    # 1. Recupera la configurazione dell'Agente per il PDF
+                    agent_config = chatbot_agent.get_config_summary()
+
+                    # 2. Genera l'istanza del PDF
+                    pdf = PDFGenerator(
+                        agent_config=agent_config,
+                        profile_data=st.session_state.financial_profile.model_dump(),
+                        portfolio_data=st.session_state.generated_portfolio,
+                    )
+
+                    # 3. Genera il file in memoria
+                    pdf_output_bytes = pdf.generate()
+
+                    # 4. Mostra il pulsante di download Streamlit
+                    st.download_button(
+                        label="⬇️ Esporta Report Portfolio (PDF)",
+                        data=pdf_output_bytes,
+                        file_name="Report_Finanziario.pdf",
+                        mime="application/pdf",
+                        key="download_pdf_button",
+                        type="primary",
+                    )
+
+                # --- FINE PULSANTE DI ESPORTAZIONE PDF ---
+
+                # TODO: vedere se eliminare
                 _scroll_to_bottom()
 
         else:
             logger.debug("No financial profile available to display")
     else:
-        # Handle user input ONLY if there is a prompt (i.e., not disabled)
+        # Gestiamo l'input dell'utente SOLO se c'è un prompt (quindi non è disabilitato)
         if prompt:
             logger.debug("User input received: %s", prompt[:100])
 

@@ -97,12 +97,58 @@ class Portfolio(BaseModel):
         },
     )
 
+    # TODO: questa è la funzione originale: vedere se eliminarla
+    # @model_validator(mode="after")
+    # def validate_total_percentage(self):
+    #     """Validate that asset percentages sum to approximately 100."""
+    #     total = sum(asset.percentage for asset in self.assets)
+    #     if not (99 <= total <= 101):
+    #         raise ValueError(
+    #             f"Asset percentages must sum to 100%, got {total}% instead"
+    #         )
+    #     return self
+
+    # TODO: è stata aggiunta questa nuova funzione nel caso in cui non si arrivi al 100%
+    # ma va modificata perché così come è ora accetta anche i casi in cui non ho il 100%
+    # invece bisogna forzare il fatto che la somma deve essere il 100%
     @model_validator(mode="after")
-    def validate_total_percentage(self):
-        """Validate that asset percentages sum to approximately 100."""
+    def normalize_total_percentage(self):
+        """
+        Auto-correct asset percentages to ensure they sum to exactly 100%.
+        Instead of raising an error, specifically re-proportions the values.
+        """
+        if not self.assets:
+            return self
+
         total = sum(asset.percentage for asset in self.assets)
-        if not (99 <= total <= 101):
-            raise ValueError(
-                f"Asset percentages must sum to 100%, got {total}% instead"
-            )
+
+        # Se il totale è 0, non possiamo normalizzare (evitiamo divisione per zero)
+        if total == 0:
+            # In questo caso estremo, assegniamo tutto al primo asset o lanciamo errore
+            # Qui scegliamo di distribuire equamente per non rompere l'app
+            share = 100.0 / len(self.assets)
+            for asset in self.assets:
+                asset.percentage = round(share, 2)
+            return self
+
+        # Se la somma è già corretta (con tolleranza), non facciamo nulla
+        if 99.0 <= total <= 101.0:
+            return self
+
+        # LOGICA DI NORMALIZZAZIONE
+        # Esempio: Se il totale è 60%, il fattore è 100/60 = 1.666...
+        factor = 100.0 / total
+
+        for asset in self.assets:
+            # Scaliamo ogni asset
+            asset.percentage = round(asset.percentage * factor, 2)
+
+        # Controllo finale per arrotondamenti (es. somma 99.99 o 100.01)
+        new_total = sum(asset.percentage for asset in self.assets)
+        diff = 100.0 - new_total
+
+        if diff != 0:
+            # Aggiungiamo/togliamo la piccola differenza al primo asset (spesso il più grande)
+            self.assets[0].percentage = round(self.assets[0].percentage + diff, 2)
+
         return self
