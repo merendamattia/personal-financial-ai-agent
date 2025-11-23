@@ -293,8 +293,7 @@ def initialize_financial_advisor(
         raise
 
 
-# TODO: vedere se eliminare
-# Funzione per smooth scroll della pagina
+# Function to have a smooth scroll of the page
 def _scroll_to_bottom():
     """
     Force scroll to bottom by targeting the specific Streamlit main container.
@@ -1857,9 +1856,6 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- INPUT SEMPRE PRESENTE ---
-    # Manteniamo la chat input renderizzata ma disabilitata se la conversazione è finita.
-    # Questo impedisce al browser di perdere il focus e "saltare" in alto.
     prompt = st.chat_input(
         "Ask me about your finances...",
         disabled=st.session_state.conversation_completed,
@@ -1874,7 +1870,6 @@ def main():
                 duration="long",
             )
 
-        # TODO: vedere se elimanrla
         _scroll_to_bottom()
 
         logger.debug("Conversation is completed")
@@ -1944,7 +1939,6 @@ def main():
                     "Your financial profile and PAC metrics have been extracted and analyzed."
                 )
 
-                # TODO: vedere se eliminare
                 _scroll_to_bottom()
 
                 # Financial Profile in an expanded section
@@ -1958,8 +1952,6 @@ def main():
                         "- Consider consulting with a financial advisor for personalized advice\n"
                         "- Click 'Clear Conversation' to start a new assessment or 'Change Provider' to start over"
                     )
-
-                # --- AGGIUNGO QUI IL PULSANTE DI ESPORTAZIONE PDF ---
 
                 if (
                     st.session_state.financial_profile
@@ -1988,9 +1980,6 @@ def main():
                         type="primary",
                     )
 
-                # --- FINE PULSANTE DI ESPORTAZIONE PDF ---
-
-                # TODO: vedere se eliminare
                 _scroll_to_bottom()
 
         else:

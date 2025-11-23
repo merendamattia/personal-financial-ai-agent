@@ -1,7 +1,12 @@
+import io
 import logging
 from datetime import datetime
 from typing import Any, Dict
 
+import matplotlib.colors as mcolors
+
+# Import necessari per il grafico
+import matplotlib.pyplot as plt
 from fpdf import FPDF
 
 logger = logging.getLogger(__name__)
@@ -47,6 +52,52 @@ class PDFGenerator(FPDF):
         self.multi_cell(0, 5, text)
         self.ln()
 
+    def section_subtitle(self, title):
+        # Sottotitolo per le sezioni interne
+        self.set_font("Arial", "B", 11)
+        self.cell(0, 6, title, 0, 1, "L")
+        self.ln(2)
+
+    def _create_pie_chart(self) -> io.BytesIO:
+        """
+        Genera un grafico a torta usando Matplotlib e restituisce il buffer dell'immagine.
+        """
+        assets = self.portfolio_data.get("assets", [])
+
+        # Prepara i dati
+        labels = [asset.get("symbol", "Asset") for asset in assets]
+        sizes = [asset.get("percentage", 0) for asset in assets]
+
+        # Configurazione grafico
+        fig, ax = plt.subplots(figsize=(6, 4))
+
+        # Colori professionali
+        # Se ci sono pochi asset usa Paired, altrimenti default
+        if len(labels) <= 12:
+            colors = plt.cm.Paired(range(len(labels)))
+        else:
+            colors = None
+
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=labels,
+            autopct="%1.1f%%",
+            startangle=90,
+            colors=colors,
+            textprops={"fontsize": 9},
+        )
+
+        ax.axis("equal")  # Assicura che la torta sia circolare
+        plt.title("Allocazione Portafoglio", fontsize=12, pad=20)
+
+        # Salva in memoria
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format="png", bbox_inches="tight", dpi=100)
+        img_buffer.seek(0)
+        plt.close(fig)
+
+        return img_buffer
+
     def add_cover_page(self):
         self.add_page()
         self.set_font("Arial", "B", 24)
@@ -69,12 +120,11 @@ class PDFGenerator(FPDF):
             "Questo documento è una raccomandazione generata dall'AI e non costituisce una consulenza finanziaria personalizzata. "
             "Consultare un professionista prima di prendere decisioni di investimento."
         )
-        self.add_page()  # Passa alla pagina successiva
+        self.add_page()
 
     def add_profile_summary(self):
         self.chapter_title("1. Riepilogo del Profilo Finanziario")
 
-        # Estrai le informazioni principali dal profilo (Flat Map)
         main_info = [
             (
                 "Età e Lavoro",
@@ -99,110 +149,100 @@ class PDFGenerator(FPDF):
     def add_portfolio_recommendation(self):
         self.chapter_title("2. Raccomandazione di Portafoglio")
 
-        # Rischio e Motivazione (Invariato)
+        # --- Sezione 2.1: Strategia e Rischio ---
+        self.section_subtitle("Profilo Strategico")
+
+        # Livello di Rischio
         self.set_font("Arial", "B", 10)
-        self.cell(50, 6, "Livello di Rischio:", 0, 0, "L")
+        self.cell(40, 6, "Livello di Rischio:", 0, 0, "L")
         self.set_font("Arial", "", 10)
         self.cell(0, 6, self.portfolio_data.get("risk_level", "N/A").upper(), 0, 1, "L")
 
+        # Ribilanciamento
+        rebalancing = self.portfolio_data.get("rebalancing_schedule", "N/A")
         self.set_font("Arial", "B", 10)
-        self.cell(0, 6, "Logica Strategica:", 0, 1, "L")
+        self.cell(40, 6, "Ribilanciamento:", 0, 0, "L")
+        self.set_font("Arial", "", 10)
+        # Usa multi_cell per sicurezza se il testo è lungo
+        current_x = self.get_x()
+        current_y = self.get_y()
+        self.multi_cell(0, 6, str(rebalancing), 0, "L")
+
+        self.ln(2)
+
+        # Logica Strategica
+        self.set_font("Arial", "B", 10)
+        self.cell(0, 6, "Logica di Investimento:", 0, 1, "L")
         self.set_font("Arial", "", 10)
         self.multi_cell(0, 5, self.portfolio_data.get("portfolio_reasoning", "N/A"))
         self.ln(5)
 
-        # Tabella di Allocazione
-        self.chapter_title("   2.1. Allocazione Asset")
+        # --- Sezione 2.2: Considerazioni Chiave ---
+        considerations = self.portfolio_data.get("key_considerations", [])
+        if considerations:
+            self.section_subtitle("Considerazioni Chiave")
+            self.set_font("Arial", "", 10)
 
-        # Larghezze delle colonne (Larghezze maggiorate)
-        W_SYMBOL = 40
-        W_PCT = 25
-        W_JUST = self.w - self.l_margin - self.r_margin - W_SYMBOL - W_PCT
+            for item in considerations:
+                # 1. Reset X al margine sinistro
+                self.set_x(self.l_margin)
 
-        # Intestazione tabella
-        self.set_fill_color(230, 230, 230)
-        self.set_font("Arial", "B", 10)
-        self.cell(W_SYMBOL, 10, "Asset", 1, 0, "C", 1)
-        self.cell(W_PCT, 10, "Percentuale", 1, 0, "C", 1)
-        self.cell(W_JUST, 10, "Giustificazione", 1, 1, "C", 1)
+                # 2. Disegna Bullet
+                # Il bullet occupa 5mm
+                self.cell(5, 5, "-", 0, 0, "R")
 
-        # Righe della tabella
-        self.set_font("Arial", "", 9)
-        line_height_mm = self.font_size / self.k * 1.7
-        PADDING = 1.5
+                # 3. Calcola larghezza disponibile per il testo
+                # Larghezza Totale - Margine Destro - Posizione Attuale X
+                text_width = self.w - self.r_margin - self.get_x()
 
+                # 4. Disegna il testo
+                # Usa text_width esplicito invece di 0 per evitare errori di spazio
+                self.multi_cell(text_width, 5, str(item))
+
+            self.ln(5)
+
+        # --- Sezione 2.3: Grafico Allocazione ---
+        self.chapter_title("2.1. Allocazione Asset (Grafico)")
+
+        try:
+            # Genera il grafico
+            chart_buffer = self._create_pie_chart()
+
+            # Calcola posizione per centrare l'immagine
+            # Larghezza pagina (A4) ~210mm. Immagine larga 120mm.
+            x_img = (self.w - 120) / 2
+
+            # Inserisci immagine dal buffer
+            self.image(chart_buffer, x=x_img, w=120)
+            self.ln(5)
+        except Exception as e:
+            logger.error(f"Errore generazione grafico: {e}")
+            self.cell(
+                0, 10, "Impossibile generare il grafico dell'allocazione.", 0, 1, "C"
+            )
+
+        # --- Sezione 2.4: Dettaglio Asset (Lista) ---
+        self.section_subtitle("Dettaglio e Giustificazione Asset")
+
+        self.set_font("Arial", "", 10)
         for asset in self.portfolio_data.get("assets", []):
-            pct = f"{asset.get('percentage', 0):.2f}%"
             symbol = asset.get("symbol", "N/A")
-            justification = asset.get("justification", "N/A").replace("\n", " ")
+            pct = asset.get("percentage", 0)
+            justification = asset.get("justification", "N/A")
 
-            x_start = self.get_x()
-            y_start = self.get_y()
+            # Intestazione Asset
+            self.set_font("Arial", "B", 10)
+            self.cell(0, 6, f"{symbol} ({pct}%)", 0, 1, "L")
 
-            # --- 1. Disegna Giustificazione per Calcolare l'Altezza Reale (Misurazione) ---
+            # Giustificazione (Indentata)
+            self.set_font("Arial", "", 10)
+            self.set_x(self.l_margin + 5)  # Indentazione 5mm
 
-            # Posiziona X all'inizio della terza colonna con padding
-            self.set_xy(x_start + W_SYMBOL + W_PCT + PADDING, y_start + PADDING)
+            # Calcola larghezza ridotta per l'indentazione
+            desc_width = self.w - self.r_margin - (self.l_margin + 5)
+            self.multi_cell(desc_width, 5, str(justification))
 
-            # Disegna testo multi-linea (border=0)
-            self.multi_cell(
-                W_JUST - (2 * PADDING), line_height_mm, justification, 0, "L", 0
-            )
-
-            # Cattura la Y finale impostata da multi_cell
-            y_end = self.get_y()
-
-            # Calcola l'altezza della riga
-            row_height = max(10.0, y_end - y_start)
-
-            # --- CORREZIONE CHIAVE: Reset Y per eliminare la riga vuota extra ---
-            # multi_cell in FPDF aggiunge un piccolo spazio verticale che causa la riga vuota extra.
-            # Lo correggiamo forzando y_end a non superare l'altezza calcolata.
-            # Se y_end è molto vicino a y_start + row_height, lo forziamo.
-            if (
-                y_end > y_start + row_height + 0.5
-            ):  # 0.5 è un piccolo margine di tolleranza
-                # Se l'altezza occupata è troppo grande, la riduciamo all'altezza calcolata.
-                # Questo previene salti inutili e righe vuote.
-                y_end = y_start + row_height
-
-            # --- 2. Disegno del Contenuto Rimanente (Centratura e Testo Semplice) ---
-
-            v_offset = (row_height - line_height_mm) / 2
-
-            # Colonna 1: Simbolo
-            self.set_xy(x_start + PADDING, y_start + v_offset)
-            self.cell(W_SYMBOL - (2 * PADDING), line_height_mm, symbol, 0, 0, "L")
-
-            # Colonna 2: Percentuale
-            self.set_xy(x_start + W_SYMBOL, y_start + v_offset)
-            self.cell(W_PCT, line_height_mm, pct, 0, 0, "C")
-
-            # --- 3. Disegno dei Bordi (con altezza misurata) ---
-
-            self.set_xy(x_start, y_start)
-
-            # Bordo completo della riga (contorno)
-            self.rect(x_start, y_start, W_SYMBOL + W_PCT + W_JUST, row_height)
-
-            # Linee verticali divisorie
-            self.line(
-                x_start + W_SYMBOL, y_start, x_start + W_SYMBOL, y_start + row_height
-            )
-            self.line(
-                x_start + W_SYMBOL + W_PCT,
-                y_start,
-                x_start + W_SYMBOL + W_PCT,
-                y_start + row_height,
-            )
-
-            # --- 4. Avanzamento Cursore ---
-
-            # Sposta il cursore X al margine sinistro e Y alla posizione misurata (y_end)
-            self.set_xy(self.l_margin, y_end)
-
-        # --- Avanzamento finale del cursore dopo la tabella ---
-        self.ln(5)
+            self.ln(3)  # Spazio tra gli asset
 
     def add_disclaimer(self):
         self.chapter_title("3. Note e Disclamer")
@@ -225,8 +265,8 @@ class PDFGenerator(FPDF):
         self.add_portfolio_recommendation()
         self.add_disclaimer()
 
-        # Genera l'output come bytearray/bytes
+        # Genera l'output come bytes (dest='S' ritorna bytearray o bytes)
         pdf_output = self.output(dest="S")
 
-        # Conversione esplicita in bytes per Streamlit
+        # Conversione esplicita in bytes per sicurezza con Streamlit
         return bytes(pdf_output)
