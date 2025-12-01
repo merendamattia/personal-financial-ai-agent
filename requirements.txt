@@ -53,7 +53,7 @@ filelock==3.18.0
 filetype==1.2.0
 Flask==3.1.1
 flatbuffers==25.9.23
-fonttools==4.58.2
+fonttools==4.61.0
 frozendict==2.4.6
 frozenlist==1.8.0
 fsspec==2025.5.1
