@@ -1,0 +1,44 @@
+\section{Retrieval-Augmented Generation for Financial Data}
+\label{sec:rag}
+
+\subsection{Motivation for RAG in Financial Advisory}
+
+Retrieval-augmented generation enhances LLM capabilities by grounding responses in retrieved factual information. In financial advisory, this is crucial for several reasons. Accuracy is paramount---using real historical data rather than hallucinated figures ensures that recommendations are based on verifiable information. Relevance is equally important, as finding assets that match user criteria from available options requires domain knowledge that the system must possess. Compliance considerations mean providing factual, verifiable information that can withstand scrutiny from regulators. Interpretability allows showing users which data informed recommendations, building trust in the advice-giving process. The system retrieves relevant ETFs and stocks based on user preferences and financial profiles, providing 10-year historical return data for each recommendation.
+
+\subsection{Asset Data Organization}
+
+Financial assets are organized in a structured directory hierarchy. The dataset directory contains subdirectories for different asset types. ETFs are further organized by asset class, with bonds and stocks as primary categories. Within each category, assets are organized by sector or type, such as corporate bonds, government bonds, tech sector ETFs, healthcare sector ETFs, and diversified index ETFs. Each asset includes asset name and ticker symbol, asset class and sector classification, risk level assessment, 10-year historical return data, expense ratios and fees, and diversification characteristics. This structured organization enables efficient retrieval and semantic search.
+
+\subsection{RAG Architecture}
+
+The RAGAssetRetriever implements the retrieval pipeline. The system uses embeddings to enable semantic search. The embedding model is FastEmbedder, which is lightweight and runs effectively on CPU or GPU. Embeddings have 384 dimensions, a good balance between expressiveness and computational efficiency. Distance metric is cosine similarity for relevance ranking, which is standard for embedding-based retrieval. Documents are embedded at initialization, creating a persistent vector database in Qdrant.
+
+When a user or agent needs to find relevant assets, the query is transformed into natural language search. For example, a query might be ``Conservative low-volatility bonds for risk-averse investors''. The query is embedded using the same embedding model as the documents. Vector similarity search then retrieves the top-k relevant documents. Retrieved documents are formatted and provided to the LLM context.
+
+Key configurable parameters control the retrieval process. The number of documents to retrieve (TOP\_K\_DOCUMENTS) is typically set to 10, balancing comprehensiveness with context window constraints. The similarity threshold for filtering (SIMILARITY\_THRESHOLD) is set to 0.5 to avoid including irrelevant results. Document chunks use a chunk size of 512 tokens with 128 tokens of overlap to maintain context continuity.
+
+\subsection{Integration with Agent}
+
+The FinancialAdvisorAgent leverages RAG through several methods. RAG query building occurs before retrieval, with the agent constructing optimized search queries. For example, the agent builds a query with risk tolerance as conservative, asset class as bonds, sector as government, and constraints such as maximum expense ratio of 0.25 percent and minimum five-year track record. This ensures retrieved assets match user constraints.
+
+The portfolio generation workflow follows a structured process. First, constraints are extracted from the FinancialProfile. Next, a RAG query is built with appropriate filters. Then relevant assets are retrieved from the vector database. The LLM generates allocation percentages based on the retrieved assets. Portfolio allocations are validated to sum to 100 percent. Finally, portfolio metrics are computed including expected return and volatility.
+
+Retrieved assets are formatted with rich context. Historical performance data spans ten years. Sector and asset class information helps users understand diversification. Risk metrics provide quantitative risk assessment. Diversification characteristics show how assets correlate with each other.
+
+\subsection{Data Processing Pipeline}
+
+The ETF and stock data loading process begins by reading asset description files from the dataset directory. Metadata is parsed including ticker, asset class, risk level, and returns. Documents are chunked if necessary for large prospectuses. Each chunk is embedded independently. Finally, chunks are stored in Qdrant with metadata for later filtering.
+
+10-year historical data provides annual returns for each year in the period. Volatility statistics quantify return variability. Correlation matrices enable diversification analysis. Drawdown periods and recovery times help users understand worst-case scenarios. Sharpe ratio and risk-adjusted returns provide a composite risk metric. This data is computed during initialization and cached for performance.
+
+\subsection{Performance Optimization}
+
+Qdrant automatically indexes embeddings for fast similarity search using the HNSW (Hierarchical Navigable Small World) algorithm, which supports approximate nearest neighbor search with typical query latency of 10-50ms for top-10 results.
+
+Retrieved portfolios and their analysis are cached to reduce redundant LLM calls and expensive computations. Caching significantly improves user experience by eliminating duplicate calculations for the same portfolio.
+
+\subsection{Evaluation of RAG Quality}
+
+Retrieved documents are evaluated for relevance using several metrics. Mean Reciprocal Rank measures the position of the first relevant document. Normalized Discounted Cumulative Gain quantifies ranking quality. Precision@K measures the fraction of top-K results that are relevant.
+
+Portfolio recommendations are assessed through alignment with user risk profile, examining whether recommendations match stated preferences. Historical performance of recommended assets is analyzed to verify backward compatibility. Diversification ratios ensure adequate portfolio diversification. Expected return consistency with asset class validates that recommendations align with theoretical expectations.

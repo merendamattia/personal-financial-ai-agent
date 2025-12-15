@@ -70,3 +70,20 @@ qdrant_storage/
 *.temp
 tmp/
 temp/
+
+# Latex
+**/*.synctex.gz
+**/*.log
+**/*.dvi
+**/*.bbl
+**/main.pdf
+**/*.blg
+**/*.aux
+**/*.log
+**/*.out
+**/*.bcf
+**/*.run.xml
+**/comment.cut
+**/main.out
+**/*.fdb_latexmk
+**/*.fls

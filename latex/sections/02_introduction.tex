@@ -1,0 +1,18 @@
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Motivation and Problem Statement}
+
+The democratization of financial services through digital platforms has created unprecedented opportunities for individuals to manage their wealth independently. However, effective financial planning remains a challenge for most people due to the complexity of modern financial instruments, market dynamics, and the personalized nature of financial goals. Traditional financial advisory services, while expert-driven, are often expensive and accessible only to high-net-worth individuals.
+
+The recent advances in artificial intelligence, particularly in large language models (LLMs) and their ability to understand and generate human language, present a unique opportunity to democratize financial expertise \cite{brown2020language}. LLMs can process vast amounts of financial information, understand user context through natural conversation, and provide tailored recommendations based on individual circumstances. The integration of retrieval-augmented generation (RAG) with domain-specific knowledge further enhances the quality and reliability of AI-driven advisory systems \cite{lewis2019retrieval}.
+
+This work addresses the challenge of creating an intelligent financial advisor system that can engage users in natural language conversations to understand their financial situation, extract relevant financial information from unstructured conversations, and provide evidence-based recommendations using historical financial data. Additionally, the system must respect user privacy through optional local offline inference while adapting to different user preferences for AI providers and languages. The system must validate and present portfolio recommendations with quantitative analysis, ensuring that suggestions are grounded in financial theory and historical evidence rather than abstract or unsupported claims.
+
+\subsection{Contribution}
+
+This project contributes to the field of fintech and applied AI in several ways. First, it presents a multi-provider LLM architecture supporting Ollama, Google Gemini, and OpenAI, enabling vendor-independent deployment. Second, it integrates RAG techniques with structured financial data to improve recommendation quality and factual accuracy. Third, it develops a comprehensive financial profile extraction system that operates through conversational interfaces rather than rigid forms. Fourth, it demonstrates a production-ready web application that illustrates practical AI application in financial services. Finally, it provides detailed evaluation methodologies and comprehensive testing frameworks suitable for financial AI systems.
+
+\subsection{Document Structure}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:architecture} presents the overall system architecture and design principles, including the agent framework, data models, and retrieval systems. Section~\ref{sec:implementation} details the technical implementation of core components, including technology stack, agent design patterns, and configuration mechanisms. Section~\ref{sec:rag} discusses the retrieval-augmented generation system specifically for financial data, covering asset organization, embedding strategies, and integration with the agent. Section~\ref{sec:interface} describes the user interface and interaction design, including the Streamlit framework, conversation flows, and visualization components. Finally, Section~\ref{sec:demo} provides comprehensive instructions for running and testing the system in various configurations, along with troubleshooting guidance.

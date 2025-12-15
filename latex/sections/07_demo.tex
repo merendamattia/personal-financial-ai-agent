@@ -1,0 +1,226 @@
+\section{Demonstration and Usage}
+\label{sec:demo}
+
+This section provides comprehensive instructions for deploying, running, and testing the Personal Financial AI Agent system.
+
+\subsection{System Requirements}
+
+\subsubsection{Hardware Requirements}
+
+\begin{itemize}
+    \item \textbf{CPU}: Dual-core processor or better (quad-core recommended)
+    \item \textbf{RAM}: 4GB minimum (8GB recommended for local LLM inference)
+    \item \textbf{Storage}: 10GB free space (20GB if running Ollama with large models)
+    \item \textbf{GPU}: Optional but recommended for Ollama inference
+\end{itemize}
+
+\subsubsection{Software Requirements}
+
+\begin{itemize}
+    \item \textbf{Python}: 3.11 or higher
+    \item \textbf{Docker}: Version 20.10+ (for containerized deployment)
+    \item \textbf{Docker Compose}: Version 1.29+ (for multi-container setup)
+    \item \textbf{Git}: For repository cloning
+\end{itemize}
+
+\subsection{Installation}
+
+\subsubsection{Step 1: Clone Repository}
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/merendamattia/personal-financial-ai-agent.git
+cd personal-financial-ai-agent
+\end{lstlisting}
+
+\subsubsection{Step 2: Create Python Environment}
+
+Using Conda (recommended):
+
+\begin{lstlisting}[language=bash]
+conda create --name personal-financial-ai-agent python=3.11.13
+conda activate personal-financial-ai-agent
+\end{lstlisting}
+
+Or using venv:
+
+\begin{lstlisting}[language=bash]
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+\end{lstlisting}
+
+\subsubsection{Step 3: Install Dependencies}
+
+\begin{lstlisting}[language=bash]
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsubsection{Step 4: Configure Environment Variables}
+
+\begin{lstlisting}[language=bash]
+cp .env.example .env
+# Edit .env with your settings
+\end{lstlisting}
+
+Example `.env` configuration for local Ollama:
+
+\begin{lstlisting}
+# LLM Provider
+LLM_PROVIDER=ollama
+AGENT_NAME=FinancialAdvisor
+
+# Ollama Configuration
+OLLAMA_API_URL=http://localhost:11434
+OLLAMA_MODEL=mistral
+
+# Logging
+LOG_LEVEL=INFO
+
+# Monte Carlo Parameters
+MONTECARLO_SIMULATION_SCENARIOS=1000
+MONTECARLO_SIMULATION_YEARS=20
+MONTECARLO_DEFAULT_INITIAL_INVESTMENT=1000
+MONTECARLO_DEFAULT_MONTHLY_CONTRIBUTION=100
+\end{lstlisting}
+
+\subsubsection{Step 5: Extract Dataset}
+
+\begin{lstlisting}[language=bash]
+cd dataset
+unzip ETFs.zip
+cd ..
+\end{lstlisting}
+
+\subsection{Running Locally}
+
+\subsubsection{With Ollama (Recommended)}
+
+First, install and run Ollama:
+
+\begin{lstlisting}[language=bash]
+# Install Ollama from https://ollama.com
+# Start Ollama server (runs in background)
+ollama serve
+
+# In another terminal, pull a model
+ollama pull mistral  # Or llama2, neural-chat, etc.
+\end{lstlisting}
+
+Then run the Streamlit app:
+
+\begin{lstlisting}[language=bash]
+streamlit run app.py
+\end{lstlisting}
+
+The application opens at `http://localhost:8501`.
+
+\subsubsection{With Cloud LLM Providers}
+
+For Google Gemini:
+
+\begin{lstlisting}[language=bash]
+# In .env file:
+# LLM_PROVIDER=google
+# GOOGLE_MODEL=gemini-pro
+# GOOGLE_API_KEY=your_api_key_here
+
+streamlit run app.py
+\end{lstlisting}
+
+For OpenAI:
+
+\begin{lstlisting}[language=bash]
+# In .env file:
+# LLM_PROVIDER=openai
+# OPENAI_MODEL=gpt-4
+# OPENAI_API_KEY=your_api_key_here
+
+streamlit run app.py
+\end{lstlisting}
+
+\subsection{Running with Docker}
+
+\subsubsection{Docker Compose (Recommended)}
+
+The simplest method with all dependencies:
+
+\begin{lstlisting}[language=bash]
+# Start application with Ollama
+docker compose up
+
+# Access at http://localhost:8501
+
+# Stop all containers
+docker compose down
+\end{lstlisting}
+
+The `docker-compose.yml` includes:
+
+\begin{itemize}
+    \item Streamlit web application (port 8501)
+    \item Ollama service with Mistral model (port 11434)
+    \item Persistent volumes for model caching
+\end{itemize}
+
+\subsubsection{Docker Standalone}
+
+Build and run Docker image:
+
+\begin{lstlisting}[language=bash]
+# Build image
+docker build --no-cache -t financial-ai-agent:local .
+
+# Run with environment file
+docker run -p 8501:8501 --env-file .env financial-ai-agent:local
+
+# Access at http://localhost:8501
+\end{lstlisting}
+
+Or use pre-built image from Docker Hub:
+
+\begin{lstlisting}[language=bash]
+docker pull merendamattia/personal-financial-ai-agent:latest
+docker run -p 8501:8501 --env-file .env \
+  merendamattia/personal-financial-ai-agent:latest
+\end{lstlisting}
+
+\subsection{Testing the System}
+
+\subsubsection{Unit Tests}
+
+Run unit tests for core components:
+
+\begin{lstlisting}[language=bash]
+# Run all unit tests
+pytest tests/unit/
+
+# Run specific test module
+pytest tests/unit/test_financial_profile.py
+
+# Run with coverage report
+pytest tests/unit/ --cov=src/ --cov-report=html
+\end{lstlisting}
+
+\subsubsection{Integration Tests}
+
+Test complete workflows:
+
+\begin{lstlisting}[language=bash]
+# Run integration tests
+pytest tests/test_rag.py
+
+# Run all tests
+pytest tests/
+\end{lstlisting}
+
+\subsubsection{Tool Tests}
+
+Test specific tools:
+
+\begin{lstlisting}[language=bash]
+# Test financial asset analysis tool
+pytest tests/tools/test_analyze_financial_asset.py
+
+# Test asset retriever
+pytest tests/unit/test_asset_retriever.py
+\end{lstlisting}
