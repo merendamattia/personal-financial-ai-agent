@@ -15,6 +15,14 @@ Finally, RAG-based techniques are very versatile because they allow you to chang
 
 Financial assets are organized in a structured directory hierarchy. The dataset directory contains subdirectories for different asset types. ETFs are further organized by asset class, with bonds and stocks as primary categories. Within each category, assets are organized by sector or type, such as corporate bonds, government bonds, tech sector ETFs, healthcare sector ETFs, and diversified index ETFs. Each asset includes asset name and ticker symbol, asset class and sector classification, risk level assessment, 10-year historical return data, expense ratios and fees, and diversification characteristics. This structured organization enables efficient retrieval and more accurate semantic search.
 
+\subsection{Knowledge Base Composition and Dataset}
+
+The primary knowledge source for the RAG system consists of a curated collection of ETF factsheets, sourced from the justETF platform. These documents represent the "ground truth" for the agent, providing standardized, up-to-date financial data that would otherwise be subject to hallucinations if left to the LLM's internal weights.
+
+Each document in the dataset follows a consistent semi-structured format, typically organized into several key informational blocks: \begin{itemize} \item Core Identifiers: Metadata such as the ISIN (International Securities Identification Number), ticker symbol, and fund name (e.g., iShares Core S\&P 500 UCITS ETF). \item Investment Objective: A qualitative description of the fund's strategy, such as replicating the performance of a specific index or targeting corporate bonds within a certain maturity range. \item Financial Metrics: Quantitative data including the Total Expense Ratio (TER), fund size (AUM), dividend policy (Accumulating vs. Distributing), and the replication methodology (Physical vs. Optimized). \item Risk Profile: The synthetic risk and reward indicator (SRRI), which provides a standardized score from 1 to 7, essential for the agent to align recommendations with the user’s extracted risk tolerance. \end{itemize}
+
+By indexing these specific PDF files, the RAG architecture enables the FinancialAdvisorAgent to perform "source-grounded" reasoning. When a user asks for a tech-heavy or low-cost portfolio, the retriever can pinpoint exact segments within these factsheets—such as a TER of 0.07\% for CSSPX or the Asia-Pacific focus of CSEMAS—ensuring that every financial advice is backed by official fund documentation.
+
 \subsection{RAG Architecture}
 
 The RAG architecture is centered around the RAGAssetRetriever class, which implements a streamlined pipeline for document ingestion, embedding generation, and semantic retrieval. Unlike traditional database-heavy approaches, the system utilizes a high-performance, in-memory vector indexing strategy based on NumPy and Pickle for persistence, optimized for the specific scale of the ETF dataset.
