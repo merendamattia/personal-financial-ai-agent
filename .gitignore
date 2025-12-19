@@ -1,4 +1,3 @@
-*.pdf
 __MACOSX
 .DS_Store
 .vscode/
@@ -56,7 +55,7 @@ logs/
 *.csv
 *.xlsx
 *.xls
-dataset/raw/
+dataset/**/*.pdf
 data/
 *.pkl
 *.pickle
