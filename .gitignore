@@ -75,7 +75,7 @@ temp/
 **/*.log
 **/*.dvi
 **/*.bbl
-**/main.pdf
+# **/main.pdf
 **/*.blg
 **/*.aux
 **/*.log
