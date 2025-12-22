@@ -1,3 +1,19 @@
+# [1.7.0](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.6.1...v1.7.0) (2025-12-22)
+
+
+### Bug Fixes
+
+* correct publication year for retrieval-augmented generation article in bibliography ([a607fda](https://github.com/merendamattia/personal-financial-ai-agent/commit/a607fda7c7bd5912725762149e906dd0c21234be))
+* enhance documentation in architecture, implementation, and interface sections ([1a6c68b](https://github.com/merendamattia/personal-financial-ai-agent/commit/1a6c68b81da14e8bda9bb99dd5b8f624eacc5c2d))
+* update .gitignore to comment out main.pdf and add main.pdf to the repository ([3b1e902](https://github.com/merendamattia/personal-financial-ai-agent/commit/3b1e902407264f88b46a59a029a34904e001e501))
+
+
+### Features
+
+* add flowchart images ([f87feb8](https://github.com/merendamattia/personal-financial-ai-agent/commit/f87feb883313d50c4636c418fdf9d81e7272c20d))
+* implement Personal Financial AI Agent with LaTeX documentation and CI/CD integration ([74133a4](https://github.com/merendamattia/personal-financial-ai-agent/commit/74133a461d9b58b16dff2123a71d7e0bfe6f9b8a))
+* update author information and enhance documentation in LaTeX files ([d0488e1](https://github.com/merendamattia/personal-financial-ai-agent/commit/d0488e10a3a5fa7ffc97dccc1e9a1016f2672022))
+
 ## [1.6.1](https://github.com/merendamattia/personal-financial-ai-agent/compare/v1.6.0...v1.6.1) (2025-11-19)
 
 
