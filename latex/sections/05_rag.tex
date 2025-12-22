@@ -1,0 +1,66 @@
+\section{Retrieval-Augmented Generation for Financial Data}
+\label{sec:rag}
+
+\subsection{Motivation for RAG in Financial Advisory}
+
+Retrieval-augmented generation enhances LLM capabilities by grounding responses in retrieved factual information.
+
+This approach overcomes the intrinsic limitation of static knowledge in LLMs, whose internal representations are fixed at training time and cannot reflect newly available or frequently changing information. This is particularly useful since pre-trained models were used for this project. By dynamically retrieving relevant documents at inference time, RAG enables the model to operate on up-to-date, domain-specific, and potentially proprietary knowledge without requiring modifications to the underlying parameters.
+
+Moreover, grounding generation in retrieved factual sources significantly mitigates the risk of hallucinations, as the model is encouraged to base its responses on explicit evidence rather than relying solely on learned statistical patterns. This characteristic is particularly important in scenarios where factual accuracy, reliability, and consistency are critical, such as in the financial sector. Using real historical data rather than hallucinated figures ensures that recommendations are based on verifiable information. Relevance is equally important, as finding assets that match user criteria from available options requires domain knowledge that the system must possess. Compliance considerations mean providing factual, verifiable information that can withstand scrutiny from regulators. Interpretability allows showing users which data informed recommendations, building trust in the advice-giving process. The system retrieves relevant Exchange Traded Funds (ETFs) based on user preferences and financial profiles, providing 10-year historical return data for each recommendation.
+
+Finally, RAG-based techniques are very versatile because they allow you to change the knowledge base on which the retrieval is performed, if necessary, and are much more efficient and scalable because they avoid the excessive cost of having to retrain the model.
+
+\subsection{Asset Data Organization}
+
+Financial assets are organized in a structured directory hierarchy. The dataset directory contains subdirectories for different asset types. ETFs are further organized by asset class, with bonds and stocks as primary categories. Within each category, assets are organized by sector or type, such as corporate bonds, government bonds, tech sector ETFs, healthcare sector ETFs, and diversified index ETFs. Each asset includes asset name and ticker symbol, asset class and sector classification, risk level assessment, 10-year historical return data, expense ratios and fees, and diversification characteristics. This structured organization enables efficient retrieval and more accurate semantic search.
+
+\subsection{Knowledge Base Composition and Dataset}
+
+The primary knowledge source for the RAG system consists of a curated collection of ETF factsheets, sourced from the justETF platform.\footnote{\url{https://www.justetf.com/it}} These documents represent the \textit{ground truth} for the agent, providing standardized, up-to-date financial data that would otherwise be subject to hallucinations if left to the LLM's internal weights.
+
+Each document in the dataset follows a consistent semi-structured format, typically organized into several key informational blocks:
+\begin{itemize}
+    \item Core Identifiers: Metadata such as the ISIN (International Securities Identification Number), ticker symbol, and fund name (e.g., iShares Core S\&P 500 UCITS ETF).
+    \item Investment Objective: A qualitative description of the fund's strategy, such as replicating the performance of a specific index or targeting corporate bonds within a certain maturity range.
+    \item Financial Metrics: Quantitative data including the Total Expense Ratio (TER), fund size (AUM), dividend policy (Accumulating vs. Distributing), and the replication methodology (Physical vs. Optimized).
+    \item Risk Profile: The synthetic risk and reward indicator (SRRI), which provides a standardized score from 1 to 7, essential for the agent to align recommendations with the user’s extracted risk tolerance.
+\end{itemize}
+
+By indexing these specific PDF files, the RAG architecture enables the Financial Advisor Agent to perform \textit{source-grounded} reasoning. When a user asks for a tech-heavy or low-cost portfolio, the retriever can pinpoint exact segments within these factsheets—such as a TER of 0.07\% for CSSPX or the Asia-Pacific focus of CSEMAS—ensuring that every financial advice is backed by official fund documentation.
+
+\subsection{RAG Architecture}
+
+The RAG architecture is centered around the RAG Asset Retriever class, which implements a streamlined pipeline for document ingestion, embedding generation, and semantic retrieval. Unlike traditional database-heavy approaches, the system utilizes a high-performance, in-memory vector indexing strategy based on NumPy and Pickle for persistence, optimized for the specific scale of the ETF dataset.
+
+The pipeline begins with the ingest\_pdfs method, which recursively scans the data directory to extract text from PDF documents using the pypdf library. To ensure context preservation while maintaining granularity, the extracted text is processed into overlapping chunks of 800 characters with a 120-character overlap. This character-based chunking strategy ensures that semantic boundaries are respected during the retrieval phase.
+
+For the embedding stage, the system employs the Sentence Transformer framework, specifically utilizing the \texttt{all-roberta-large-v1} model. This model transforms text chunks into high-dimensional dense vectors (1024 dimensions), capturing deep semantic relationships that simple keyword searches would miss. To optimize performance and reduce computational overhead, the system implements a caching mechanism: once generated, the embeddings and associated metadata are serialized into an embeddings \texttt{.pkl} file. Subsequent initializations of the agent load this index directly from disk, eliminating the need for re-processing the entire dataset.
+
+The retrieval logic follows a \textit{top-K} similarity approach. When a query is received, it is encoded into the same vector space as the document chunks. The system then computes the cosine similarity between the query vector and the entire embedding matrix using scikit-learn's optimized routines. The k most relevant segments (with a default of \texttt{k = 15}) are returned to the Financial Advisor Agent, ranked by their similarity score. This architecture ensures that the LLM is provided with the most contextually relevant financial data to ground its recommendations in factual evidence.
+
+\subsection{Integration with Agent}
+
+The Financial Advisor Agent leverages the RAG system through a structured integration layer designed to ground portfolio recommendations in real-world data. The process begins with the RAG Query Builder, which transforms the user's structured Financial Profile into a natural language search query. This query is designed to capture the essence of the user's risk tolerance and financial goals, which are then passed to the RAG Asset Retriever.
+
+The portfolio generation workflow follows a rigorous sequential process. First, the agent extracts the client's profile from the conversation history using structured output validation. Next, it invokes the retriever to identify the top 15 most relevant asset documents. To maintain efficiency within the LLM context window, the agent extracts the most significant metadata and descriptions from these documents, creating a rich \textit{asset context}.
+
+Finally, the agent utilizes a structured response mechanism to generate a Portfolio recommendation. By providing both the client's financial profile and the retrieved asset context to the LLM, the system ensures that the suggested allocation percentages are informed by actual historical data found in the dataset. This architectural choice minimizes hallucinations and ensures that the risk level of the generated portfolio is strictly aligned with the user's extracted profile. Analysis of specific assets can further be performed through direct tool invocation, providing detailed historical return metrics and quantitative analysis to the end-user.
+
+\subsection{Data Processing Pipeline}
+
+The data processing pipeline is designed to transform unstructured PDF prospectuses into a searchable knowledge base. The process begins by scanning the dataset directory for PDF files using a recursive globbing strategy. Text extraction is performed page-by-page, and the resulting strings are partitioned into chunks of 800 characters with a 120-character overlap to maintain semantic continuity.
+
+Each chunk is then transformed into a dense vector representation using the Sentence Transformer model. Unlike generic text processing, this pipeline focuses on capturing the specific terminology found in financial asset descriptions. The system computes these embeddings during the initial setup and stores the entire payload—consisting of the original text, metadata (such as the source file name and chunk ID), and the numerical vectors—into a serialized Pickle file for efficient subsequent loading.
+
+\subsection{Performance Optimization}
+
+To ensure a responsive user experience, the system implements several optimization strategies at the retrieval level. Instead of relying on external database calls, the RAG Asset Retriever loads the entire embedding index into memory as a NumPy array. This allows for near-instantaneous similarity computations using optimized matrix operations.
+
+The use of a global cache for the embedding model ensures that the Sentence Transformer is loaded into memory only once, significantly reducing the latency of subsequent user queries. Furthermore, by utilizing the all-roberta-large-v1 model, the system achieves a balance between high-dimensional semantic accuracy (1024 dimensions) and computational speed, even on hardware without dedicated GPU acceleration.
+
+%\subsection{Evaluation of RAG Quality}
+
+%The quality of the RAG output is monitored through real-time similarity scoring. For every retrieved document, the system computes a confidence score based on the cosine distance between the query and the asset chunk. These scores are used to rank the top 15 results before they are passed to the Financial Advisor Agent.
+
+%This grounding mechanism ensures that portfolio recommendations are not based on the internal biases of the LLM but are supported by verifiable text extracted directly from official ETF documentation. To further enhance reliability, the agent presents the specific source and relevance score of the retrieved information, allowing for a transparent audit trail of the advice-giving process.

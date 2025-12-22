@@ -1,4 +1,3 @@
-*.pdf
 __MACOSX
 .DS_Store
 .vscode/
@@ -56,7 +55,7 @@ logs/
 *.csv
 *.xlsx
 *.xls
-dataset/raw/
+dataset/**/*.pdf
 data/
 *.pkl
 *.pickle
@@ -70,3 +69,20 @@ qdrant_storage/
 *.temp
 tmp/
 temp/
+
+# Latex
+**/*.synctex.gz
+**/*.log
+**/*.dvi
+**/*.bbl
+# **/main.pdf
+**/*.blg
+**/*.aux
+**/*.log
+**/*.out
+**/*.bcf
+**/*.run.xml
+**/comment.cut
+**/main.out
+**/*.fdb_latexmk
+**/*.fls

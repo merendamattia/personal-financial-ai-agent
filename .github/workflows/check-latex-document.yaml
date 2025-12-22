@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - develop
+      - relazione
   push:
     branches:
       - main
       - develop
+      - relazione
   workflow_dispatch:
 
 jobs:
@@ -18,22 +20,22 @@ jobs:
       - name: Set up Git repository
         uses: actions/checkout@v4
 
-      # - name: Compile main LaTeX document
-      #   uses: xu-cheng/latex-action@v3
-      #   with:
-      #     working_directory: latex
-      #     root_file: main.tex
+      - name: Compile main LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: latex
+          root_file: main.tex
 
-      # - name: Check if PDF was created
-      #   run: |
-      #     ls -la
-      #     ls -la latex
-      #     if [ -f "latex/main.pdf" ]; then
-      #       echo "PDF built successfully."
-      #     else
-      #       echo "PDF build failed." >&2
-      #       exit 1
-      #     fi
+      - name: Check if PDF was created
+        run: |
+          ls -la
+          ls -la latex
+          if [ -f "latex/main.pdf" ]; then
+            echo "PDF built successfully."
+          else
+            echo "PDF build failed." >&2
+            exit 1
+          fi
 
     #   - name: Commit and push pdf
     #     run: |

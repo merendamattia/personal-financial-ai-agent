@@ -1,0 +1,19 @@
+\section{Demonstration and Usage}
+\label{sec:demo}
+
+This section outlines how to deploy and use the Personal Financial AI Agent, including system requirements, installation procedures, and the integrated testing infrastructure.
+
+
+\subsection{Software Requirements}
+
+You will need \textbf{Python 3.11} or higher installed on your system. For containerized deployment, \textbf{Docker version 20.10+} is required, along with \textbf{Docker Compose version 1.29+} for managing multi-container setups. Finally, \textbf{Git} is necessary for cloning the repository from GitHub.
+
+\subsection{Installation}
+
+For detailed installation instructions, please refer to the comprehensive \textbf{README.md} file in the repository at \url{https://github.com/merendamattia/personal-financial-ai-agent}. The README contains step-by-step, up-to-date guidance for cloning the repository, setting up Python environments, installing dependencies, and configuring environment variables for all supported LLM providers.
+
+We \textbf{strongly recommend} using Docker Compose for deployment as it provides a consistent, isolated, and production-ready environment that works seamlessly across all platforms without local dependency management hassles.
+
+\subsection{Testing and Validation}
+
+The project includes a comprehensive test suite covering unit tests for core components (financial profile, portfolio management, asset retrieval), integration tests for complete workflows, and tool-specific tests for financial analysis features. All tests are automatically executed in the CI/CD pipeline to ensure code quality and prevent regressions.
