@@ -173,7 +173,7 @@ pydeck==0.9.1
 Pygments==2.19.1
 pylatexenc==2.10
 pyparsing==3.2.3
-pypdf==6.4.0
+pypdf==6.6.0
 pypdfium2==4.30.0
 pytest==8.4.2
 python-bidi==0.6.6
@@ -233,7 +233,7 @@ typing_extensions==4.14.0
 tzdata==2025.2
 ucimlrepo==0.0.7
 uritemplate==4.2.0
-urllib3==2.6.0
+urllib3==2.6.3
 uv==0.9.6
 uvicorn==0.34.3
 virtualenv==20.35.3
